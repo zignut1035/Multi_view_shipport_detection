@@ -9,28 +9,28 @@ echo "=== Starting 10-minute recording session ==="
 # ── 1. Start AIS data collector (Background) ────────────────────
 # Runs geolocation.py to fetch ship data while video records
 echo "Starting AIS collector..."
-python3 geolocation.py --interval $AIS_INTERVAL --duration $DURATION &
+python3 kanmon_AIS_tracker.py --interval $AIS_INTERVAL --duration $DURATION &
 AIS_PID=$!
 echo "AIS collector started (PID: $AIS_PID)"
 
-# ── 2. Start Camera 1 (West Harbour L2 - South) ─────────────────
+# ── 2. Start Camera 1 The Moji Port (Kyushu) Side Camera ─────────────────
 echo "Cam 1: Recording for 10 minutes..."
 ~/.local/bin/yt-dlp --remote-components ejs:github \
     --js-runtimes node \
     --downloader ffmpeg \
     --downloader-args "ffmpeg_i:-t ${DURATION}" \
     -o "cam1_%(epoch)s.%(ext)s" \
-    "https://www.youtube.com/watch?v=6hPWq2IG08M" &
+    "https://www.youtube.com/watch?v=_r-g8wU-0o8" &
 CAM1_PID=$!
 
-# ── 3. Start Camera 2 (West Harbour L1 - North) ─────────────────
+# ── 3. Start Camera 2 The Shimonoseki (Honshu) Side Camera ─────────────────
 echo "Cam 2: Recording for 10 minutes..."
 ~/.local/bin/yt-dlp --remote-components ejs:github \
     --js-runtimes node \
     --downloader ffmpeg \
     --downloader-args "ffmpeg_i:-t ${DURATION}" \
     -o "cam2_%(epoch)s.%(ext)s" \
-    "https://www.youtube.com/watch?v=JnJhFYhIjFs" &
+    "https://www.youtube.com/watch?v=ihPEMsh1mFw" &
 CAM2_PID=$!
 
 # ── 4. Wait for all processes to finish ─────────────────────────

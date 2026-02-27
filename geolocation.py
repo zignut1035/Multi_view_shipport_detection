@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 # ── CLI arguments ────────────────────────────────────────────────
 parser = argparse.ArgumentParser()
-parser.add_argument("--interval", type=int, default=30,
+parser.add_argument("--interval", type=int, default=10,
                     help="Seconds between AIS polls (default: 30)")
 parser.add_argument("--duration", type=int, default=600,
                     help="Total recording duration in seconds (default: 600 = 10 mins)")
