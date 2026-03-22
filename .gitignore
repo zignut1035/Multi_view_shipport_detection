@@ -13,3 +13,7 @@
 # Ignore Python caches and future API keys
 __pycache__/
 .env
+*.jpg
+*.png
+*.zip
+*.txt
