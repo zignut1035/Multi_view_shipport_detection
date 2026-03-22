@@ -1,1 +1,15 @@
-data_for_use/
+# Ignore all video files
+*.mp4
+*.webm
+*.mkv
+
+# Ignore yt-dlp temporary files
+*.part
+*.ytdl
+
+# Ignore log files
+*.log
+
+# Ignore Python caches and future API keys
+__pycache__/
+.env
