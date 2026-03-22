@@ -1,0 +1,928 @@
+{
+  "timestamp_utc": "2026-03-05T13:21:33.240454+00:00",
+  "epoch": 1772716893,
+  "poll_index": 15,
+  "vessel_count": 92,
+  "vessels": [
+    {
+      "mmsi": 205084000,
+      "name": "BRUGGE",
+      "lat": 60.216633,
+      "lon": 25.188063,
+      "sog": 0.1,
+      "cog": 339.4,
+      "heading": 139,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 209813000,
+      "name": "WADDEN 3",
+      "lat": 60.214352,
+      "lon": 25.199482,
+      "sog": 0.0,
+      "cog": 307.0,
+      "heading": 511,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 230174780,
+      "name": "IA 09",
+      "lat": 60.147108,
+      "lon": 24.982218,
+      "sog": 0.0,
+      "cog": 355.3,
+      "heading": 511,
+      "nav_stat": 15
+    },
+    {
+      "mmsi": 219165000,
+      "name": "LOTUS",
+      "lat": 60.163717,
+      "lon": 24.956167,
+      "sog": 0.0,
+      "cog": 18.0,
+      "heading": 140,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 215898000,
+      "name": "SH MINERVA",
+      "lat": 60.158592,
+      "lon": 24.927147,
+      "sog": 0.0,
+      "cog": 194.0,
+      "heading": 511,
+      "nav_stat": 1
+    },
+    {
+      "mmsi": 228492700,
+      "name": "ECO MISTRAL",
+      "lat": 60.215863,
+      "lon": 25.186402,
+      "sog": 0.0,
+      "cog": 52.2,
+      "heading": 320,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230983110,
+      "name": "CARINA",
+      "lat": 60.178417,
+      "lon": 24.969925,
+      "sog": 0.0,
+      "cog": 360.0,
+      "heading": 511,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 212709000,
+      "name": "NORDIC GIANT",
+      "lat": 60.213945,
+      "lon": 25.199872,
+      "sog": 0.1,
+      "cog": 332.4,
+      "heading": 166,
+      "nav_stat": 3
+    },
+    {
+      "mmsi": 230310000,
+      "name": "F_TEST",
+      "lat": 60.16624,
+      "lon": 24.705705,
+      "sog": 0.0,
+      "cog": 347.0,
+      "heading": 511,
+      "nav_stat": 15
+    },
+    {
+      "mmsi": 325141700,
+      "name": "AJAX",
+      "lat": 60.152805,
+      "lon": 24.924187,
+      "sog": 0.0,
+      "cog": 127.1,
+      "heading": 208,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 319068100,
+      "name": "INFINITY",
+      "lat": 60.152897,
+      "lon": 24.924273,
+      "sog": 0.0,
+      "cog": 102.5,
+      "heading": 209,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 236622000,
+      "name": "CONSTANCE",
+      "lat": 60.212505,
+      "lon": 25.19877,
+      "sog": 0.0,
+      "cog": 82.4,
+      "heading": 51,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230070680,
+      "name": "LOKKI",
+      "lat": 60.209022,
+      "lon": 25.189857,
+      "sog": 0.0,
+      "cog": 0.0,
+      "heading": 511,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 230044267,
+      "name": "KALLE",
+      "lat": 60.183415,
+      "lon": 24.9737,
+      "sog": 0.0,
+      "cog": 0.0,
+      "heading": 511,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 230119270,
+      "name": "U626",
+      "lat": 60.179468,
+      "lon": 25.22228,
+      "sog": 6.6,
+      "cog": 246.2,
+      "heading": 511,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 319097600,
+      "name": "INTREPID",
+      "lat": 60.15175,
+      "lon": 24.92314,
+      "sog": 0.0,
+      "cog": 346.6,
+      "heading": 207,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 215616000,
+      "name": "SH VEGA",
+      "lat": 60.158598,
+      "lon": 24.927113,
+      "sog": 0.0,
+      "cog": 145.8,
+      "heading": 142,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 244874000,
+      "name": "EMOTION",
+      "lat": 60.215102,
+      "lon": 25.192868,
+      "sog": 0.0,
+      "cog": 349.4,
+      "heading": 139,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230157020,
+      "name": "BORIS",
+      "lat": 60.259173,
+      "lon": 25.058365,
+      "sog": 3.1,
+      "cog": 154.0,
+      "heading": 289,
+      "nav_stat": 15
+    },
+    {
+      "mmsi": 230985770,
+      "name": "MARINA",
+      "lat": 60.163545,
+      "lon": 24.956418,
+      "sog": 0.0,
+      "cog": 192.5,
+      "heading": 511,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 209099000,
+      "name": "WADDEN 2",
+      "lat": 60.214298,
+      "lon": 25.199323,
+      "sog": 0.1,
+      "cog": 206.8,
+      "heading": 139,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 237714600,
+      "name": "PLS-622",
+      "lat": 60.216857,
+      "lon": 25.199603,
+      "sog": 0.0,
+      "cog": 147.6,
+      "heading": 141,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230094210,
+      "name": "KAAKKOISTUULI",
+      "lat": 60.209028,
+      "lon": 25.187662,
+      "sog": 0.0,
+      "cog": 132.3,
+      "heading": 511,
+      "nav_stat": 15
+    },
+    {
+      "mmsi": 230939760,
+      "name": "PV 71",
+      "lat": 60.14723,
+      "lon": 24.981472,
+      "sog": 1.8,
+      "cog": 218.9,
+      "heading": 69,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 230033790,
+      "name": "OIL FINN",
+      "lat": 60.165542,
+      "lon": 24.953788,
+      "sog": 0.0,
+      "cog": 352.6,
+      "heading": 356,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230938490,
+      "name": "KUOKKA PEKKA 2",
+      "lat": 60.165755,
+      "lon": 24.954223,
+      "sog": 0.0,
+      "cog": 257.2,
+      "heading": 511,
+      "nav_stat": 3
+    },
+    {
+      "mmsi": 230938640,
+      "name": "INGEBORG",
+      "lat": 60.1453,
+      "lon": 24.983635,
+      "sog": 0.1,
+      "cog": 225.8,
+      "heading": 511,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230940140,
+      "name": "BIG PARTNER",
+      "lat": 60.214053,
+      "lon": 25.199578,
+      "sog": 0.0,
+      "cog": 197.9,
+      "heading": 511,
+      "nav_stat": 3
+    },
+    {
+      "mmsi": 230157740,
+      "name": "RV 92",
+      "lat": 60.153352,
+      "lon": 24.946122,
+      "sog": 0.0,
+      "cog": 255.7,
+      "heading": 91,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 230997360,
+      "name": "FNS 73",
+      "lat": 60.148495,
+      "lon": 24.919635,
+      "sog": 0.0,
+      "cog": 140.0,
+      "heading": 28,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230941570,
+      "name": "MERIKUOKKA",
+      "lat": 60.155727,
+      "lon": 24.902438,
+      "sog": 0.0,
+      "cog": 360.0,
+      "heading": 511,
+      "nav_stat": 15
+    },
+    {
+      "mmsi": 230051170,
+      "name": "RESCUE EMMI",
+      "lat": 60.153913,
+      "lon": 24.771257,
+      "sog": 0.0,
+      "cog": 5.6,
+      "heading": 354,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 215000000,
+      "name": "SH DIANA",
+      "lat": 60.158642,
+      "lon": 24.927058,
+      "sog": 0.0,
+      "cog": 0.0,
+      "heading": 142,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230094190,
+      "name": "LOUNAISTUULI",
+      "lat": 60.167935,
+      "lon": 25.059983,
+      "sog": 0.0,
+      "cog": 106.2,
+      "heading": 178,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 983542156,
+      "name": "CARNIVAL PRIDE T4",
+      "lat": 60.149217,
+      "lon": 24.920923,
+      "sog": 0.0,
+      "cog": 360.0,
+      "heading": 511,
+      "nav_stat": 15
+    },
+    {
+      "mmsi": 230938050,
+      "name": "NEREID ",
+      "lat": 60.172632,
+      "lon": 24.96521,
+      "sog": 0.0,
+      "cog": 93.2,
+      "heading": 511,
+      "nav_stat": 15
+    },
+    {
+      "mmsi": 230052800,
+      "name": "EMMA",
+      "lat": 60.176077,
+      "lon": 24.9621,
+      "sog": 0.0,
+      "cog": 210.4,
+      "heading": 135,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230628000,
+      "name": "FINLANDIA",
+      "lat": 60.130417,
+      "lon": 24.904405,
+      "sog": 15.2,
+      "cog": 176.4,
+      "heading": 175,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 237714400,
+      "name": "PLS-620",
+      "lat": 60.216318,
+      "lon": 25.199767,
+      "sog": 0.0,
+      "cog": 231.3,
+      "heading": 135,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 1193046,
+      "name": "KALLE",
+      "lat": 60.146055,
+      "lon": 24.983697,
+      "sog": 0.0,
+      "cog": 0.0,
+      "heading": 511,
+      "nav_stat": 7
+    },
+    {
+      "mmsi": 230997550,
+      "name": "FNS PYHARANTA 92",
+      "lat": 60.145277,
+      "lon": 24.99736,
+      "sog": 7.8,
+      "cog": 23.5,
+      "heading": 24,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 230112360,
+      "name": "KING",
+      "lat": 60.175937,
+      "lon": 24.962362,
+      "sog": 0.0,
+      "cog": 95.0,
+      "heading": 317,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 276859000,
+      "name": "MYSTAR",
+      "lat": 60.142577,
+      "lon": 24.906667,
+      "sog": 13.8,
+      "cog": 15.2,
+      "heading": 13,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 230112370,
+      "name": "HESSU",
+      "lat": 60.167413,
+      "lon": 24.980115,
+      "sog": 0.0,
+      "cog": 190.0,
+      "heading": 229,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230940680,
+      "name": "HAAVI-3",
+      "lat": 60.154563,
+      "lon": 24.889362,
+      "sog": 0.0,
+      "cog": 207.4,
+      "heading": 511,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 230235000,
+      "name": "VIVAN",
+      "lat": 60.145343,
+      "lon": 24.98352,
+      "sog": 0.0,
+      "cog": 307.6,
+      "heading": 511,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230994870,
+      "name": "KOKAR",
+      "lat": 60.17039,
+      "lon": 24.979863,
+      "sog": 9.0,
+      "cog": 116.7,
+      "heading": 117,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 230086910,
+      "name": "SS LOKKI",
+      "lat": 60.16087,
+      "lon": 24.924668,
+      "sog": 0.0,
+      "cog": 324.4,
+      "heading": 315,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230940690,
+      "name": "HM-61",
+      "lat": 60.181918,
+      "lon": 25.000665,
+      "sog": 0.1,
+      "cog": 276.0,
+      "heading": 211,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230997240,
+      "name": "FNS UUSIMAA 05",
+      "lat": 60.145165,
+      "lon": 24.965172,
+      "sog": 3.5,
+      "cog": 244.2,
+      "heading": 237,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 230998670,
+      "name": "ASTRID",
+      "lat": 60.14529,
+      "lon": 24.983227,
+      "sog": 0.0,
+      "cog": 346.6,
+      "heading": 192,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 230941190,
+      "name": "S/S TURSO",
+      "lat": 60.1613,
+      "lon": 24.923778,
+      "sog": 0.0,
+      "cog": 319.3,
+      "heading": 133,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230047000,
+      "name": "AJAX",
+      "lat": 60.220852,
+      "lon": 25.197782,
+      "sog": 0.0,
+      "cog": 0.0,
+      "heading": 216,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230031000,
+      "name": "FURUNOP",
+      "lat": 60.166272,
+      "lon": 24.705755,
+      "sog": 0.0,
+      "cog": 334.5,
+      "heading": 511,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 256882000,
+      "name": "CMA CGM RUNDALE",
+      "lat": 60.212015,
+      "lon": 25.19309,
+      "sog": 0.0,
+      "cog": 140.8,
+      "heading": 141,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230298000,
+      "name": "MUIKKU",
+      "lat": 60.169668,
+      "lon": 24.96498,
+      "sog": 0.0,
+      "cog": 82.6,
+      "heading": 511,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 276718000,
+      "name": "CASTOR",
+      "lat": 60.220762,
+      "lon": 25.197937,
+      "sog": 0.0,
+      "cog": 29.6,
+      "heading": 213,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230025470,
+      "name": "MT1322",
+      "lat": 60.168895,
+      "lon": 24.968887,
+      "sog": 0.0,
+      "cog": 325.0,
+      "heading": 511,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 230985150,
+      "name": "HECTOR",
+      "lat": 60.2211,
+      "lon": 25.198193,
+      "sog": 0.0,
+      "cog": 130.4,
+      "heading": 229,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230671000,
+      "name": "FINNSWAN",
+      "lat": 60.219197,
+      "lon": 25.199915,
+      "sog": 0.0,
+      "cog": 81.5,
+      "heading": 132,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230145000,
+      "name": "ARANDA",
+      "lat": 60.16177,
+      "lon": 24.901573,
+      "sog": 0.0,
+      "cog": 12.6,
+      "heading": 323,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230044260,
+      "name": "KALLE",
+      "lat": 60.146012,
+      "lon": 24.983465,
+      "sog": 0.0,
+      "cog": 0.0,
+      "heading": 511,
+      "nav_stat": 3
+    },
+    {
+      "mmsi": 230108590,
+      "name": "EHRENSVAERD",
+      "lat": 60.146525,
+      "lon": 24.992905,
+      "sog": 0.0,
+      "cog": 0.1,
+      "heading": 66,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 276861000,
+      "name": "HELIOS",
+      "lat": 60.16035,
+      "lon": 24.927753,
+      "sog": 0.0,
+      "cog": 330.2,
+      "heading": 108,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230984450,
+      "name": "ALEXANDRA",
+      "lat": 60.14522,
+      "lon": 24.984047,
+      "sog": 0.0,
+      "cog": 30.6,
+      "heading": 196,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230025040,
+      "name": "TUIKKU          ",
+      "lat": 60.163485,
+      "lon": 24.956912,
+      "sog": 0.0,
+      "cog": 132.0,
+      "heading": 142,
+      "nav_stat": 3
+    },
+    {
+      "mmsi": 230087600,
+      "name": "HELSINKI",
+      "lat": 60.17632,
+      "lon": 24.962495,
+      "sog": 0.0,
+      "cog": 264.7,
+      "heading": 231,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230987940,
+      "name": "JOANNA SATURNA",
+      "lat": 60.155737,
+      "lon": 24.888642,
+      "sog": 0.0,
+      "cog": 343.2,
+      "heading": 102,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230091080,
+      "name": "PILOT L153",
+      "lat": 60.105293,
+      "lon": 24.974172,
+      "sog": 0.0,
+      "cog": 28.3,
+      "heading": 17,
+      "nav_stat": 15
+    },
+    {
+      "mmsi": 276813000,
+      "name": "VIKING XPRS",
+      "lat": 60.163217,
+      "lon": 24.968983,
+      "sog": 0.0,
+      "cog": 106.0,
+      "heading": 106,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 230985490,
+      "name": "SUOMENLINNA II",
+      "lat": 60.167253,
+      "lon": 24.95597,
+      "sog": 0.0,
+      "cog": 297.0,
+      "heading": 178,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 230169030,
+      "name": "RODNY",
+      "lat": 60.145973,
+      "lon": 24.983438,
+      "sog": 0.0,
+      "cog": 360.0,
+      "heading": 148,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230987000,
+      "name": "FINNLADY",
+      "lat": 60.191815,
+      "lon": 25.221323,
+      "sog": 11.3,
+      "cog": 188.7,
+      "heading": 191,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 230061040,
+      "name": "SUURSAARI",
+      "lat": 60.169147,
+      "lon": 25.009365,
+      "sog": 0.0,
+      "cog": 204.3,
+      "heading": 349,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230108270,
+      "name": "VALBORG",
+      "lat": 60.17193,
+      "lon": 24.961928,
+      "sog": 0.0,
+      "cog": 83.0,
+      "heading": 511,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230991880,
+      "name": "SVANHILD",
+      "lat": 60.170832,
+      "lon": 24.961362,
+      "sog": 0.0,
+      "cog": 252.0,
+      "heading": 511,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230938960,
+      "name": "HALLI",
+      "lat": 60.165595,
+      "lon": 24.954262,
+      "sog": 0.0,
+      "cog": 289.2,
+      "heading": 177,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230007910,
+      "name": "TUISKAVA",
+      "lat": 60.168998,
+      "lon": 24.969735,
+      "sog": 0.0,
+      "cog": 270.9,
+      "heading": 511,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 230031001,
+      "name": "FURUNO KOEAJO",
+      "lat": 60.166337,
+      "lon": 24.705723,
+      "sog": 0.0,
+      "cog": 315.5,
+      "heading": 511,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230044550,
+      "name": "YOLDIA",
+      "lat": 60.185133,
+      "lon": 25.025238,
+      "sog": 0.0,
+      "cog": 360.0,
+      "heading": 511,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230992510,
+      "name": "KUPELI",
+      "lat": 60.145985,
+      "lon": 24.980123,
+      "sog": 0.0,
+      "cog": 49.3,
+      "heading": 103,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230990270,
+      "name": "HARALD",
+      "lat": 60.160237,
+      "lon": 24.928158,
+      "sog": 0.0,
+      "cog": 123.6,
+      "heading": 283,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 230024660,
+      "name": "TOR",
+      "lat": 60.167482,
+      "lon": 24.956357,
+      "sog": 0.0,
+      "cog": 156.3,
+      "heading": 354,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230948000,
+      "name": "CONTAINERSHIPS VII",
+      "lat": 60.213833,
+      "lon": 25.201633,
+      "sog": 0.0,
+      "cog": 66.5,
+      "heading": 140,
+      "nav_stat": 3
+    },
+    {
+      "mmsi": 230025060,
+      "name": "ROCKMATE",
+      "lat": 60.165197,
+      "lon": 24.954453,
+      "sog": 0.0,
+      "cog": 90.6,
+      "heading": 356,
+      "nav_stat": 3
+    },
+    {
+      "mmsi": 230941940,
+      "name": "VARTIOLAIVA 55   ",
+      "lat": 60.171817,
+      "lon": 24.9624,
+      "sog": 0.0,
+      "cog": 0.0,
+      "heading": 195,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230014910,
+      "name": "MT1310",
+      "lat": 60.168763,
+      "lon": 24.969803,
+      "sog": 0.0,
+      "cog": 135.0,
+      "heading": 511,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230955000,
+      "name": "CARMEL",
+      "lat": 60.145158,
+      "lon": 24.925132,
+      "sog": 0.0,
+      "cog": 71.2,
+      "heading": 232,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 230113760,
+      "name": "KATHRINA",
+      "lat": 60.145547,
+      "lon": 24.980943,
+      "sog": 0.0,
+      "cog": 244.7,
+      "heading": 511,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 255806451,
+      "name": "NORDIC ITALIA",
+      "lat": 60.213583,
+      "lon": 25.19015,
+      "sog": 0.0,
+      "cog": 239.1,
+      "heading": 318,
+      "nav_stat": 5
+    },
+    {
+      "mmsi": 230125910,
+      "name": "PILOT L-139",
+      "lat": 60.117868,
+      "lon": 24.979543,
+      "sog": 9.3,
+      "cog": 185.3,
+      "heading": 185,
+      "nav_stat": 0
+    },
+    {
+      "mmsi": 265004000,
+      "name": "SILJA SYMPHONY",
+      "lat": 60.161423,
+      "lon": 24.959653,
+      "sog": 0.0,
+      "cog": 35.6,
+      "heading": 139,
+      "nav_stat": 5
+    }
+  ]
+}
