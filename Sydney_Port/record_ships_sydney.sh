@@ -5,7 +5,7 @@ export PATH=/home/treenut/.local/bin:/home/treenut/.nvm/versions/node/v20.20.0/b
 
 # ── 1. Define Paths ──────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
-SAVE_DIR="/mnt/d/Kanmon_Videos"
+SAVE_DIR="/mnt/d/Sydney_Videos"
 
 mkdir -p "$SAVE_DIR"
 cd "$SAVE_DIR" || exit
@@ -19,33 +19,37 @@ echo "=== Starting 30-minute recording session at $(date) ==="
 echo "Saving all files directly to: $SAVE_DIR"
 
 # ── 2. Cleanup old processes ─────────────────────────────────────
-pkill -INT -f kanmon_AIS_tracker.py
+pkill -INT -f Sydney_AIS_tracker.py
 pkill -INT -f yt-dlp
 sleep 5 
 
 # ── 3. Start AIS data collector ──────────────────────────────────
 echo "Starting AIS collector..."
-timeout -s INT $DURATION python3 "$SCRIPT_DIR/kanmon_AIS_tracker.py" --interval $AIS_INTERVAL --duration $DURATION &
+timeout -s INT $DURATION python3 "$SCRIPT_DIR/Sydney_AIS_tracker.py" --interval $AIS_INTERVAL --duration $DURATION &
 AIS_PID=$!
 echo "AIS collector started (PID: $AIS_PID)"
 
-# ── 4. Start Camera 1 (Shimonoseki) ──────────────────────────────
-echo "Cam 1 (Shimonoseki): Recording for 30 minutes..."
-timeout -s INT $DURATION yt-dlp --remote-components ejs:github --js-runtimes node -o "cam1_shimonoseki_%(epoch)s.%(ext)s" "https://www.youtube.com/watch?v=VUXXORrhIFs" &
+# ── 4. Start Camera 1 (Sydney) ───────────────────────────────────
+echo "Cam (Sydney): Recording for 30 minutes..."
+
+# Define your YouTube link here
+CAM1_URL="https://www.youtube.com/watch?v=5uZa3-RMFos" 
+
+timeout -s INT $DURATION yt-dlp \
+    --remote-components ejs:github \
+    --js-runtimes node \
+    -o "cam_sydney_%(epoch)s.%(ext)s" \
+    "$CAM1_URL" &
+
 CAM1_PID=$!
 
-# ── 5. Start Camera 2 (Moji) ─────────────────────────────────────
-echo "Cam 2 (Moji): Recording for 30 minutes..."
-timeout -s INT $DURATION yt-dlp --remote-components ejs:github --js-runtimes node -o "cam2_moji_%(epoch)s.%(ext)s" "https://www.youtube.com/watch?v=_r-g8wU-0o8" &
-CAM2_PID=$!
-
-# ── 6. Wait for processes to finish ──────────────────────────────
-wait $CAM1_PID $CAM2_PID
-echo "Both cameras finished gracefully."
+# ── 5. Wait for processes to finish ──────────────────────────────
+wait $CAM1_PID
+echo "Camera finished gracefully."
 
 wait $AIS_PID
 echo "AIS collector finished gracefully."
 
 echo ""
 echo "=== All done ==="
-echo "Files saved in Windows at: D:\Kanmon_Videos"
+echo "Files saved in Windows at: D:\Sydney_Videos"
