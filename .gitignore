@@ -1,4 +1,31 @@
-# Ignore all video files
+# --- 1. Ignore Videos and Temp Files ---
+*.mp4
+*.webm
+*.mkv
+*.part
+*.ytdl
+
+# --- 2. Ignore Secrets (VERY IMPORTANT) ---
+# This ignores the specific cookie file but allows other .txt files
+cookies.txt
+.env
+
+# --- 3. Ignore AIS Data Folders ---
+# This prevents thousands of JSON files from being uploaded
+**/ais_data_kanmon/
+**/ais_data_sydney/
+
+# --- 4. Ignore Logs and Images ---
+*.log
+cam1_error_log.txt
+cam2_error_log.txt
+sydney_error_log.txt
+*.jpg
+*.png
+*.zip
+
+# --- 5. Python Clutter ---
+__pycache__/# Ignore all video files
 *.mp4
 *.webm
 *.mkv
