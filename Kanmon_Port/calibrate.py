@@ -1,84 +1,48 @@
-# save as: check_calibration.py
-
 import cv2
 import numpy as np
-import math
-from pyproj import Transformer
 
-_t = Transformer.from_crs("epsg:4326", "epsg:32652", always_xy=True)
+# ==========================================
+# 1. YOUR CURRENT MATRICES (Cam 1)
+# ==========================================
+pts_cam1 = np.array([[512, 471], [1010, 655], [1609, 773], [1293, 487], [1093, 473]], dtype='float32')
+gps_targets = np.array([[130.955369, 33.963322], [130.941378, 33.953036], [130.939064, 33.950069], [130.962311, 33.954869], [130.962061, 33.957167]], dtype='float32')
 
-def to_utm(lon, lat):
-    x, y = _t.transform(lon, lat)
-    return (x, y)
+# Calculate Homography and Inverse
+H_cam1, status = cv2.findHomography(pts_cam1, gps_targets)
+H_inv = np.linalg.inv(H_cam1)
 
-def px_to_world(u, v, H):
-    pt = np.float32([[[float(u), float(v)]]])
-    result = cv2.perspectiveTransform(pt, H)
-    return float(result[0][0][0]), float(result[0][0][1])
+# ==========================================
+# 2. THE MATH TEST (Reprojection Error)
+# ==========================================
+print("=== CALIBRATION ERROR REPORT ===")
+pts_cam1_reshaped = pts_cam1.reshape(-1, 1, 2)
+calculated_gps = cv2.perspectiveTransform(pts_cam1_reshaped, H_cam1).reshape(-1, 2)
 
-CAM1_GPS = [
-    (130.955347, 33.963303),
-    (130.961858, 33.959900),
-    (130.961497, 33.948072),
-    (130.939142, 33.950114),
-    (130.941286, 33.952989),
-]
-CAM2_GPS = [
-    (130.962308, 33.954875),
-    (130.962164, 33.955994),
-    (130.962042, 33.957208),
-    (130.955425, 33.963311),
-    (130.929742, 33.949850),
-]
+for i in range(len(gps_targets)):
+    actual = gps_targets[i]
+    calculated = calculated_gps[i]
+    print(f"Point {i+1} Error: {abs(actual[0] - calculated[0]):.6f} lon, {abs(actual[1] - calculated[1]):.6f} lat")
 
-CAM1_WORLD = np.float64([to_utm(lon, lat) for lon, lat in CAM1_GPS])
-CAM2_WORLD = np.float64([to_utm(lon, lat) for lon, lat in CAM2_GPS])
+# ==========================================
+# 3. THE VISUAL TEST (Eye Test)
+# ==========================================
+# Load your video (Make sure this file is on your laptop!)
+cap = cv2.VideoCapture('trimmed_cam1_shimonoseki_1775987824.mp4')
+ret, frame = cap.read()
 
-CAM1_PX = np.float32([
-    [510, 466],
-    [926, 468],
-    [51714, 3518],
-    [1606, 770],
-    [1001, 626],
-])
-CAM2_PX = np.float32([
-    [3660, 253],
-    [1133, 701],
-    [1650, 610],
-    [1782, 561],
-    [178, 533],
-])
+if ret:
+    for gps in gps_targets:
+        # Convert GPS back to pixels
+        gps_pt = np.array([gps[0], gps[1], 1.0])
+        pixel_pt = np.dot(H_inv, gps_pt)
+        x, y = int(pixel_pt[0] / pixel_pt[2]), int(pixel_pt[1] / pixel_pt[2])
+        
+        # Draw a red dot where the math thinks the landmark is
+        cv2.circle(frame, (x, y), 8, (0, 0, 255), -1)
 
-H1, mask1 = cv2.findHomography(CAM1_PX, CAM1_WORLD, cv2.RANSAC, 5.0)
-H2, mask2 = cv2.findHomography(CAM2_PX, CAM2_WORLD, cv2.RANSAC, 5.0)
-
-CAM1_NAMES = [
-    "Shimonoseki bridge base",
-    "Moji bridge base",
-    "Mojiko Retro",
-    "Breakwater right",
-    "Ferris wheel",
-]
-CAM2_NAMES = [
-    "Breakwater left",
-    "Breakwater right",
-    "Red roof building",
-    "Shimonoseki bridge base",
-    "Kaikyo Yume Tower",
-]
-
-print("\n[CAL] CAM1 landmark projection errors:")
-for i, (px, gps, name) in enumerate(zip(CAM1_PX, CAM1_GPS, CAM1_NAMES)):
-    wx, wy = px_to_world(px[0], px[1], H1)
-    expected = to_utm(*gps)
-    err = math.sqrt((wx - expected[0])**2 + (wy - expected[1])**2)
-    status = "✓" if err < 50 else "✗ BAD"
-    print(f"  pt{i} {name:<30} {err:6.1f} m  {status}")
-
-print("\n[CAL] CAM2 landmark projection errors:")
-for i, (px, gps, name) in enumerate(zip(CAM2_PX, CAM2_GPS, CAM2_NAMES)):
-    wx, wy = px_to_world(px[0], px[1], H2)
-    expected = to_utm(*gps)
-    err = math.sqrt((wx - expected[0])**2 + (wy - expected[1])**2)
-    status = "✓" if err < 50 else "✗ BAD"
-    print(f"  pt{i} {name:<30} {err:6.1f} m  {status}")
+    print("\nOpening image window... Press any key to close it.")
+    cv2.imshow("Validation Check", frame)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+else:
+    print("Could not read the video file. Check the file name and path!")
