@@ -6,14 +6,14 @@
 *.ytdl
 
 # --- 2. Ignore Secrets (VERY IMPORTANT) ---
-# This ignores the specific cookie file but allows other .txt files
 cookies.txt
 .env
 
 # --- 3. Ignore AIS Data Folders ---
-# This prevents thousands of JSON files from being uploaded
 **/ais_data_kanmon/
 **/ais_data_sydney/
+**/ais_data_rotterdam/
+/tmp/
 
 # --- 4. Ignore Logs and Images ---
 *.log
@@ -25,22 +25,8 @@ sydney_error_log.txt
 *.zip
 
 # --- 5. Python Clutter ---
-__pycache__/# Ignore all video files
-*.mp4
-*.webm
-*.mkv
-
-# Ignore yt-dlp temporary files
-*.part
-*.ytdl
-
-# Ignore log files
-*.log
-
-# Ignore Python caches and future API keys
 __pycache__/
-.env
-*.jpg
-*.png
-*.zip
+
+# --- 6. General Text Files ---
+# Warning: This ignores requirements.txt and README.txt too
 *.txt
