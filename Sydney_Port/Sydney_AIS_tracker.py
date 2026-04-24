@@ -14,8 +14,8 @@ parser.add_argument("--duration", type=int, default=1800,
 args = parser.parse_args()
 
 # ── Configuration ────────────────────────────────────────────────
-# >>> YOU MUST PASTE YOUR MARINE TRAFFIC API KEY HERE <<<
-API_KEY = ""
+# >>> YOU MUST PASTE YOUR DATALASTIC API KEY HERE <<<
+API_KEY = "YOUR_DATALASTIC_API_KEY_HERE"
 
 # Bounding Box for Sydney Harbour Webcam View (Southern Hemisphere = Negative Latitudes)
 MINLAT = -33.8650  # Bottom edge (South: Circular Quay)
@@ -23,11 +23,13 @@ MAXLAT = -33.8450  # Top edge (North: Near Kirribilli camera)
 MINLON = 151.1950  # Left edge (West: Past the Harbour Bridge)
 MAXLON = 151.2250  # Right edge (East: Past the Opera House)
 
+# Convert Bounding Box into a closed Polygon string for Datalastic
+COORDS = f"{MINLAT},{MINLON};{MAXLAT},{MINLON};{MAXLAT},{MAXLON};{MINLAT},{MAXLON};{MINLAT},{MINLON}"
+
 OUTPUT_DIR = "ais_data_sydney"
 
-# MarineTraffic Export Vessels API (PS04 - Custom Area)
-# Using protocol:jsono for nicely formatted JSON objects and msgtype:extended
-API_URL = f"https://services.marinetraffic.com/api/exportvessels/v:8/{API_KEY}/MINLAT:{MINLAT}/MAXLAT:{MAXLAT}/MINLON:{MINLON}/MAXLON:{MAXLON}/protocol:jsono/msgtype:extended"
+# Datalastic Vessel in Polygon API endpoint
+API_URL = "https://api.datalastic.com/api/v0/vessel_in_polygon"
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -36,28 +38,35 @@ def fetch_ais_snapshot():
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            # MarineTraffic puts parameters straight into the URL
-            response = requests.get(API_URL, timeout=30)
+            # Datalastic passes parameters via the 'params' dictionary
+            params = {
+                "api-key": API_KEY,
+                "coords": COORDS
+            }
+            
+            response = requests.get(API_URL, params=params, timeout=30)
             response.raise_for_status()
             
             data = response.json()
             
-            # MarineTraffic returns a direct list of objects when using protocol:jsono
-            if isinstance(data, list):
+            # Datalastic places the list of vessels inside a "data" array
+            vessels_list = data.get("data", [])
+            
+            if isinstance(vessels_list, list):
                 results = []
-                for v in data:
+                for v in vessels_list:
                     results.append({
-                        "mmsi":        v.get("MMSI"),
-                        "name":        v.get("SHIPNAME", "Unknown"),
-                        "type":        v.get("SHIPTYPE"),
-                        "lat":         float(v.get("LAT")) if v.get("LAT") else None,
-                        "lon":         float(v.get("LON")) if v.get("LON") else None,
-                        # Fix: MarineTraffic speed is usually in 1/10 knots (e.g. 142 = 14.2 knots)
-                        "speed":       float(v.get("SPEED", 0)) / 10.0 if v.get("SPEED") is not None else None, 
-                        "course":      v.get("COURSE"), 
-                        "heading":     v.get("HEADING"),
-                        "nav_stat":    v.get("STATUS"),
-                        "received_ts": v.get("TIMESTAMP") # MT provides an ISO timestamp string
+                        "mmsi":        v.get("mmsi") or v.get("uuid"),
+                        "name":        v.get("name", "Unknown"),
+                        "type":        v.get("type"),
+                        "lat":         v.get("lat"),
+                        "lon":         v.get("lon"),
+                        # Datalastic speed (sog) is already in knots, so we removed the /10.0 division that MarineTraffic needed
+                        "speed":       v.get("sog"), 
+                        "course":      v.get("cog"), 
+                        "heading":     v.get("heading"),
+                        "nav_stat":    v.get("navigational_status"),
+                        "received_ts": v.get("last_position_epoch") 
                     })
                 return results
             else:
@@ -71,22 +80,26 @@ def fetch_ais_snapshot():
             print(f"[AIS Sydney] API did not return JSON. Check your API key and limits.")
             break
         except requests.exceptions.RequestException as e:
-            print(f"[AIS Sydney] Network Error: {e}")
+            # Show detailed Datalastic error if available (e.g., rate limits, bad API key)
+            if e.response is not None:
+                print(f"[AIS Sydney] Network Error: HTTP {e.response.status_code} - {e.response.text}")
+            else:
+                print(f"[AIS Sydney] Network Error: {e}")
             break 
 
     print("[AIS Sydney] Failed to fetch data after multiple attempts.")
     return []
 
 def main():
-    if API_KEY == "YOUR_MARINETRAFFIC_API_KEY_HERE":
+    if API_KEY == "YOUR_DATALASTIC_API_KEY_HERE":
         print("[ERROR] Execution stopped: You forgot to paste your API Key in the script!")
         return
 
     start_time = time.time()
     poll_count = 0
 
-    print(f"[AIS Sydney] Starting — polling MarineTraffic every {args.interval}s")
-    print(f"[AIS Sydney] Area: Sydney Harbour (Lat: {MINLAT} to {MAXLAT}, Lon: {MINLON} to {MAXLON})")
+    print(f"[AIS Sydney] Starting — polling Datalastic every {args.interval}s")
+    print(f"[AIS Sydney] Area: Sydney Harbour Polygon")
 
     while (time.time() - start_time) < args.duration:
         poll_count += 1

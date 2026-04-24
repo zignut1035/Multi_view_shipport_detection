@@ -7,16 +7,16 @@ from datetime import datetime, timezone
 
 # ── CLI arguments ────────────────────────────────────────────────
 parser = argparse.ArgumentParser()
-parser.add_argument("--interval", type=int, default=30, 
-                    help="Seconds between AIS polls (default: 30)")
+parser.add_argument("--interval", type=int, default=15, 
+                    help="Seconds between AIS polls (default: 15)")
 parser.add_argument("--duration", type=int, default=1800,
                     help="Total recording duration in seconds (default: 1800 = 30 mins)")
 args = parser.parse_args()
 
 # ── Configuration ────────────────────────────────────────────────
-# >>> YOU MUST PASTE YOUR MARINE TRAFFIC API KEY HERE <<<
+# >>> YOU MUST PASTE YOUR DATALASTIC API KEY HERE <<<
 
-API_KEY = "YOUR_MARINETRAFFIC_API_KEY_HERE"
+API_KEY = "YOUR_DATALASTIC_API_KEY_HERE"
 
 # Bounding Box defined by your 4 exact landmarks
 MINLAT = 33.9420  # Bottom edge (Furthest South: Mojiko Retro)
@@ -24,10 +24,14 @@ MAXLAT = 33.9680  # Top edge (Furthest North: Shimonoseki Bridge Pole)
 MINLON = 130.9220 # Left edge (Furthest West: Kaikyo Yume Tower)
 MAXLON = 130.9700 # Right edge (Furthest East: Moji Bridge Pole)
 
+# Convert Bounding Box into a closed Polygon string for Datalastic
+# Format connects the 4 corners: Bottom-Left -> Top-Left -> Top-Right -> Bottom-Right -> Bottom-Left
+COORDS = f"{MINLAT},{MINLON};{MAXLAT},{MINLON};{MAXLAT},{MAXLON};{MINLAT},{MAXLON};{MINLAT},{MINLON}"
+
 OUTPUT_DIR = "ais_data_kanmon"
 
-# MarineTraffic Export Vessels API (PS04 - Custom Area)
-API_URL = f"https://services.marinetraffic.com/api/exportvessels/v:8/{API_KEY}/MINLAT:{MINLAT}/MAXLAT:{MAXLAT}/MINLON:{MINLON}/MAXLON:{MAXLON}/protocol:jsono/msgtype:extended"
+# Datalastic Vessel in Polygon API endpoint
+API_URL = "https://api.datalastic.com/api/v0/vessel_in_polygon"
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -36,30 +40,34 @@ def fetch_ais_snapshot():
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            # MarineTraffic puts parameters straight into the URL, so no `params=` dict is needed
-            response = requests.get(API_URL, timeout=30)
+            # Datalastic prefers parameters passed via the requests 'params' dictionary
+            params = {
+                "api-key": API_KEY,
+                "coords": COORDS
+            }
+            
+            response = requests.get(API_URL, params=params, timeout=30)
             response.raise_for_status()
             
-            # If the API key is bad, MT sometimes returns HTML or an error string.
-            # json() will fail if it's not valid JSON.
             data = response.json()
             
-            # MarineTraffic returns a direct list of objects when using protocol:jsono
-            if isinstance(data, list):
+            # Datalastic places the list of vessels inside a "data" array
+            vessels_list = data.get("data", [])
+            
+            if isinstance(vessels_list, list):
                 results = []
-                for v in data:
+                for v in vessels_list:
                     results.append({
-                        "mmsi":        v.get("MMSI"),
-                        "name":        v.get("SHIPNAME", "Unknown"),
-                        "type":        v.get("SHIPTYPE"),
-                        "lat":         v.get("LAT"),
-                        "lon":         v.get("LON"),
-                        # Note: MarineTraffic speed is usually in 1/10 knots (e.g. 142 = 14.2 knots)
-                        "speed":       v.get("SPEED"), 
-                        "course":      v.get("COURSE"), 
-                        "heading":     v.get("HEADING"),
-                        "nav_stat":    v.get("STATUS"),
-                        "received_ts": v.get("TIMESTAMP") # MT provides an ISO timestamp string
+                        "mmsi":        v.get("mmsi") or v.get("uuid"),
+                        "name":        v.get("name", "Unknown"),
+                        "type":        v.get("type"),
+                        "lat":         v.get("lat"),
+                        "lon":         v.get("lon"),
+                        "speed":       v.get("sog"), # Datalastic uses 'sog' (Speed Over Ground)
+                        "course":      v.get("cog"), # Datalastic uses 'cog' (Course Over Ground)
+                        "heading":     v.get("heading"),
+                        "nav_stat":    v.get("navigational_status"),
+                        "received_ts": v.get("last_position_epoch") # Epoch timestamp of the vessel update
                     })
                 return results
             else:
@@ -73,21 +81,25 @@ def fetch_ais_snapshot():
             print(f"[AIS] API did not return JSON. Check your API key and limits.")
             break
         except requests.exceptions.RequestException as e:
-            print(f"[AIS] Network Error: {e}")
+            # Special handling to show Datalastic API error messages if available
+            if e.response is not None:
+                print(f"[AIS] Network Error: HTTP {e.response.status_code} - {e.response.text}")
+            else:
+                print(f"[AIS] Network Error: {e}")
             break 
 
     print("[AIS] Failed to fetch data after multiple attempts.")
     return []
 
 def main():
-    if API_KEY == "YOUR_MARINETRAFFIC_API_KEY_HERE":
+    if API_KEY == "YOUR_DATALASTIC_API_KEY_HERE":
         print("[ERROR] Execution stopped: You forgot to paste your API Key in the script!")
         return
 
     start_time = time.time()
     poll_count = 0
 
-    print(f"[AIS] Starting — polling MarineTraffic every {args.interval}s")
+    print(f"[AIS] Starting — polling Datalastic every {args.interval}s")
     print(f"[AIS] Area: Kanmon Strait Bounding Box (Lat: {MINLAT} to {MAXLAT}, Lon: {MINLON} to {MAXLON})")
 
     while (time.time() - start_time) < args.duration:

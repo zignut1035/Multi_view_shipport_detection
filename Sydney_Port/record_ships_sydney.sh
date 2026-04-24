@@ -16,7 +16,7 @@ cd "$SAVE_DIR" || exit
 
 # ── Configuration ────────────────────────────────────────────────
 DURATION=1800
-AIS_INTERVAL=15
+AIS_INTERVAL=30
 
 echo "=== Starting 30-minute recording session at $(date) ==="
 echo "Saving all files directly to: $SAVE_DIR"
