@@ -85,8 +85,8 @@ echo "AIS collector finished."
 echo ""
 echo "=== Post-processing session $SESSION_ID ==="
 
-CAM1_FILE=$(ls "$SAVE_DIR/cam1_shimonoseki/"*.mp4 2>/dev/null | grep -v ".bak" | head -1)
-CAM2_FILE=$(ls "$SAVE_DIR/cam2_moji/"*.mp4 2>/dev/null | grep -v ".bak" | head -1)
+CAM1_FILE=$(ls "$SAVE_DIR/cam1_shimonoseki/"*.{mp4,ts,mkv} 2>/dev/null | grep -v ".bak" | head -1)
+CAM2_FILE=$(ls "$SAVE_DIR/cam2_moji/"*.{mp4,ts,mkv} 2>/dev/null | grep -v ".bak" | head -1)
 
 if [ -z "$CAM1_FILE" ] || [ -z "$CAM2_FILE" ]; then
     echo "❌ Could not find video files. Skipping post-processing."
