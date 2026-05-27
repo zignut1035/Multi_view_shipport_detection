@@ -82,22 +82,26 @@ def main():
         print("[ERROR] Execution stopped: You forgot to paste your API Key in the script!")
         return
 
-    # Setup argparse so command line arguments work
     parser = argparse.ArgumentParser(description="Fetch AIS data from Datalastic.")
-    parser.add_argument("--interval", type=int, default=60,         help="Seconds to wait between API calls (default: 60)")
-    parser.add_argument("--duration", type=int, default=1800,       help="Total duration to run script in seconds (default: 1800)")
-    parser.add_argument("--output",   type=str, default="ais_data_kanmon", help="Folder to save JSON snapshots (default: ais_data_kanmon)")
+    parser.add_argument("--interval", type=int,   default=60,               help="Seconds between API calls (default: 60)")
+    parser.add_argument("--duration", type=int,   default=1800,             help="Total duration in seconds (default: 1800)")
+    parser.add_argument("--output",   type=str,   default="ais_data_kanmon", help="Folder to save JSON snapshots")
+    parser.add_argument("--epoch",    type=int,   default=None,             help="Record epoch from bash script for sync reference")
     args = parser.parse_args()
 
     output_dir = args.output
     os.makedirs(output_dir, exist_ok=True)
 
+    # Use the epoch passed from bash, or fall back to current time
+    record_epoch = args.epoch if args.epoch else int(time.time())
+
     start_time = time.time()
     poll_count = 0
 
     print(f"[AIS] Starting — polling Datalastic every {args.interval}s")
-    print(f"[AIS] Area: Kanmon Strait Radius (Center: {CENTER_LAT}, {CENTER_LON} | Radius: {RADIUS} NM)")
-    print(f"[AIS] Saving to: {output_dir}")
+    print(f"[AIS] Area: Kanmon Strait (Center: {CENTER_LAT}, {CENTER_LON} | Radius: {RADIUS} NM)")
+    print(f"[AIS] Record epoch : {record_epoch}")
+    print(f"[AIS] Saving to    : {output_dir}")
 
     while (time.time() - start_time) < args.duration:
         poll_count += 1
@@ -108,18 +112,20 @@ def main():
         vessels_found = fetch_ais_snapshot()
 
         snapshot = {
-            "timestamp_utc": timestamp.isoformat(),
-            "epoch":         epoch,
-            "poll_index":    poll_count,
-            "vessel_count":  len(vessels_found),
-            "vessels":       vessels_found,
+            "timestamp_utc":  timestamp.isoformat(),
+            "epoch":          epoch,
+            "record_epoch":   record_epoch,          # ← links this poll to the video session
+            "offset_seconds": epoch - record_epoch,  # ← seconds since recording started
+            "poll_index":     poll_count,
+            "vessel_count":   len(vessels_found),
+            "vessels":        vessels_found,
         }
 
         out_path = os.path.join(output_dir, f"ais_{iso_ts}_epoch{epoch}.json")
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(snapshot, f, indent=2, ensure_ascii=False)
 
-        print(f"[AIS] Poll #{poll_count} | {len(vessels_found)} vessel(s) saved.")
+        print(f"[AIS] Poll #{poll_count} | offset: +{epoch - record_epoch}s | {len(vessels_found)} vessel(s) saved.")
 
         elapsed   = time.time() - start_time
         remaining = args.duration - elapsed
@@ -127,7 +133,7 @@ def main():
         if sleep_for > 0:
             time.sleep(sleep_for)
 
-    print(f"[AIS] Finished. Saved to '{output_dir}' directory.")
+    print(f"[AIS] Finished. {poll_count} polls saved to '{output_dir}'.")
 
 if __name__ == "__main__":
     main()
