@@ -5,55 +5,39 @@ import os
 import argparse
 from datetime import datetime, timezone
 
-# ── CLI arguments ────────────────────────────────────────────────
-parser = argparse.ArgumentParser()
-parser.add_argument("--interval", type=int, default=15, 
-                    help="Seconds between AIS polls (default: 15)")
-parser.add_argument("--duration", type=int, default=1800,
-                    help="Total recording duration in seconds (default: 1800 = 30 mins)")
-args = parser.parse_args()
-
 # ── Configuration ────────────────────────────────────────────────
-# >>> YOU MUST PASTE YOUR DATALASTIC API KEY HERE <<<
+API_KEY = ""
 
-API_KEY = "YOUR_DATALASTIC_API_KEY_HERE"
+CENTER_LAT = 33.954331
+CENTER_LON  = 130.954801
+RADIUS      = 1.5  # nautical miles
 
-# Bounding Box defined by your 4 exact landmarks
-MINLAT = 33.9420  # Bottom edge (Furthest South: Mojiko Retro)
-MAXLAT = 33.9680  # Top edge (Furthest North: Shimonoseki Bridge Pole)
-MINLON = 130.9220 # Left edge (Furthest West: Kaikyo Yume Tower)
-MAXLON = 130.9700 # Right edge (Furthest East: Moji Bridge Pole)
+API_URL = "https://api.datalastic.com/api/v0/vessel_inradius"
 
-# Convert Bounding Box into a closed Polygon string for Datalastic
-# Format connects the 4 corners: Bottom-Left -> Top-Left -> Top-Right -> Bottom-Right -> Bottom-Left
-COORDS = f"{MINLAT},{MINLON};{MAXLAT},{MINLON};{MAXLAT},{MAXLON};{MINLAT},{MAXLON};{MINLAT},{MINLON}"
-
-OUTPUT_DIR = "ais_data_kanmon"
-
-# Datalastic Vessel in Polygon API endpoint
-API_URL = "https://api.datalastic.com/api/v0/vessel_in_polygon"
-
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+# ── AIS Fetch ─────────────────────────────────────────────────────
 
 def fetch_ais_snapshot():
-    # Retry Logic in case the server hiccups
+    # Retry logic in case the server hiccups
     max_retries = 3
     for attempt in range(max_retries):
         try:
             # Datalastic prefers parameters passed via the requests 'params' dictionary
             params = {
                 "api-key": API_KEY,
-                "coords": COORDS
+                "lat":     CENTER_LAT,
+                "lon":     CENTER_LON,
+                "radius":  RADIUS,
             }
-            
+
             response = requests.get(API_URL, params=params, timeout=30)
             response.raise_for_status()
-            
+
             data = response.json()
-            
-            # Datalastic places the list of vessels inside a "data" array
-            vessels_list = data.get("data", [])
-            
+
+            # The radius endpoint puts the list inside data -> vessels
+            # We use an empty dict {} as a fallback to prevent NoneType errors
+            vessels_list = data.get("data", {}).get("vessels", [])
+
             if isinstance(vessels_list, list):
                 results = []
                 for v in vessels_list:
@@ -63,11 +47,11 @@ def fetch_ais_snapshot():
                         "type":        v.get("type"),
                         "lat":         v.get("lat"),
                         "lon":         v.get("lon"),
-                        "speed":       v.get("sog"), # Datalastic uses 'sog' (Speed Over Ground)
-                        "course":      v.get("cog"), # Datalastic uses 'cog' (Course Over Ground)
+                        "speed":        v.get("speed"),
+                        "course":       v.get("course"),
                         "heading":     v.get("heading"),
                         "nav_stat":    v.get("navigational_status"),
-                        "received_ts": v.get("last_position_epoch") # Epoch timestamp of the vessel update
+                        "received_ts": v.get("last_position_epoch"),  # Epoch timestamp of the vessel update
                     })
                 return results
             else:
@@ -78,7 +62,7 @@ def fetch_ais_snapshot():
             print(f"[AIS] Server slow. Retrying {attempt + 1}/{max_retries}...")
             time.sleep(2)
         except json.JSONDecodeError:
-            print(f"[AIS] API did not return JSON. Check your API key and limits.")
+            print("[AIS] API did not return JSON. Check your API key and limits.")
             break
         except requests.exceptions.RequestException as e:
             # Special handling to show Datalastic API error messages if available
@@ -86,27 +70,40 @@ def fetch_ais_snapshot():
                 print(f"[AIS] Network Error: HTTP {e.response.status_code} - {e.response.text}")
             else:
                 print(f"[AIS] Network Error: {e}")
-            break 
+            break
 
     print("[AIS] Failed to fetch data after multiple attempts.")
     return []
 
+# ── Main ──────────────────────────────────────────────────────────
+
 def main():
-    if API_KEY == "YOUR_DATALASTIC_API_KEY_HERE":
+    if API_KEY == "Please type your API key here":
         print("[ERROR] Execution stopped: You forgot to paste your API Key in the script!")
         return
+
+    # Setup argparse so command line arguments work
+    parser = argparse.ArgumentParser(description="Fetch AIS data from Datalastic.")
+    parser.add_argument("--interval", type=int, default=60,         help="Seconds to wait between API calls (default: 60)")
+    parser.add_argument("--duration", type=int, default=1800,       help="Total duration to run script in seconds (default: 1800)")
+    parser.add_argument("--output",   type=str, default="ais_data_kanmon", help="Folder to save JSON snapshots (default: ais_data_kanmon)")
+    args = parser.parse_args()
+
+    output_dir = args.output
+    os.makedirs(output_dir, exist_ok=True)
 
     start_time = time.time()
     poll_count = 0
 
     print(f"[AIS] Starting — polling Datalastic every {args.interval}s")
-    print(f"[AIS] Area: Kanmon Strait Bounding Box (Lat: {MINLAT} to {MAXLAT}, Lon: {MINLON} to {MAXLON})")
+    print(f"[AIS] Area: Kanmon Strait Radius (Center: {CENTER_LAT}, {CENTER_LON} | Radius: {RADIUS} NM)")
+    print(f"[AIS] Saving to: {output_dir}")
 
     while (time.time() - start_time) < args.duration:
         poll_count += 1
         timestamp = datetime.now(timezone.utc)
-        epoch = int(timestamp.timestamp())
-        iso_ts = timestamp.strftime("%Y%m%dT%H%M%SZ")
+        epoch     = int(timestamp.timestamp())
+        iso_ts    = timestamp.strftime("%Y%m%dT%H%M%SZ")
 
         vessels_found = fetch_ais_snapshot()
 
@@ -118,19 +115,19 @@ def main():
             "vessels":       vessels_found,
         }
 
-        out_path = os.path.join(OUTPUT_DIR, f"ais_{iso_ts}_epoch{epoch}.json")
+        out_path = os.path.join(output_dir, f"ais_{iso_ts}_epoch{epoch}.json")
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(snapshot, f, indent=2, ensure_ascii=False)
 
         print(f"[AIS] Poll #{poll_count} | {len(vessels_found)} vessel(s) saved.")
 
-        elapsed = time.time() - start_time
+        elapsed   = time.time() - start_time
         remaining = args.duration - elapsed
         sleep_for = min(args.interval, remaining)
         if sleep_for > 0:
             time.sleep(sleep_for)
 
-    print(f"[AIS] Finished. Saved to '{OUTPUT_DIR}' directory.")
+    print(f"[AIS] Finished. Saved to '{output_dir}' directory.")
 
 if __name__ == "__main__":
     main()
