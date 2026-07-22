@@ -10,7 +10,7 @@ API_KEY = ""
 
 CENTER_LAT = 33.954331
 CENTER_LON  = 130.954801
-RADIUS      = 1.5  # nautical miles
+RADIUS      = 1.6  # nautical miles
 
 API_URL = "https://api.datalastic.com/api/v0/vessel_inradius"
 
@@ -83,8 +83,8 @@ def main():
         return
 
     parser = argparse.ArgumentParser(description="Fetch AIS data from Datalastic.")
-    parser.add_argument("--interval", type=int,   default=60,               help="Seconds between API calls (default: 60)")
-    parser.add_argument("--duration", type=int,   default=1800,             help="Total duration in seconds (default: 1800)")
+    parser.add_argument("--interval", type=int,   default=20,               help="Seconds between API calls (default: 60)")
+    parser.add_argument("--duration", type=int,   default=900,             help="Total duration in seconds (default: 1800)")
     parser.add_argument("--output",   type=str,   default="ais_data_kanmon", help="Folder to save JSON snapshots")
     parser.add_argument("--epoch",    type=int,   default=None,             help="Record epoch from bash script for sync reference")
     args = parser.parse_args()

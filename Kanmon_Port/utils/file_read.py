@@ -25,17 +25,30 @@ def update_time(Time, t):
     return Time, timeStamp, name
 
 def read_all(path, result_path):
-    video_path = glob.glob(path + '*.mp4') + glob.glob(path + '*.avi')
-    video_path = video_path[0]
+    # 1. Clean the path just in case of hidden spaces or trailing slashes
+    path = path.strip().rstrip('/')
+
+    # 2. BULLETPROOF VIDEO SEARCH
+    search_mp4 = os.path.join(path, '*.mp4')
+    search_avi = os.path.join(path, '*.avi')
+    video_list = glob.glob(search_mp4) + glob.glob(search_avi)
+    
+    if not video_list:
+        raise FileNotFoundError(f"[ERROR] No .mp4 or .avi files found inside: {path}")
+    
+    video_path = video_list[0]
     v_p = re.split(r'[\.\-\_\\\\/]', video_path)
 
-    ais_path = path + '/ais'
+    ais_path = os.path.join(path, 'ais')
     os.makedirs(result_path, exist_ok=True)
 
-    result_video  = result_path + 'video/'  + path.split('/')[-2] + '.' + v_p[-1]
-    result_metric = result_path + 'metric/' + path.split('/')[-2] + '.txt'
-    os.makedirs(result_path + 'video/',  exist_ok=True)
-    os.makedirs(result_path + 'metric/', exist_ok=True)
+    # Cleaned up result paths using os.path.join
+    folder_name = os.path.basename(path)
+    result_video  = os.path.join(result_path, 'video', f"{folder_name}.{v_p[-1]}")
+    result_metric = os.path.join(result_path, 'metric', f"{folder_name}.txt")
+    
+    os.makedirs(os.path.join(result_path, 'video'), exist_ok=True)
+    os.makedirs(os.path.join(result_path, 'metric'), exist_ok=True)
 
     for suffix in ('_detection', '_tracking', '_fusion'):
         p = result_metric[:-4] + suffix + result_metric[-4:]
@@ -43,17 +56,23 @@ def read_all(path, result_path):
             os.remove(p)
 
     # Extract start time from the epoch in the video filename
-    # e.g. cam1_shimonoseki_1779409728.mp4 → epoch 1779409728
     epoch_match = re.search(r'_(\d{10})\.', video_path)
     if epoch_match:
         epoch = int(epoch_match.group(1))
         dt = datetime.fromtimestamp(epoch, tz=timezone.utc)
         initial_time = [dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, 0]
     else:
-        # fallback: hardcoded (edit if your session time changes)
-        initial_time = [2026, 5, 22, 0, 28, 48, 0]   # epoch 1779409728 → 00:28:48 UTC
+        # fallback: hardcoded
+        initial_time = [2026, 5, 22, 0, 28, 48, 0]
 
-    with open(glob.glob(path + '/*.txt')[0], "r") as f:
+    # 3. BULLETPROOF TEXT FILE SEARCH
+    search_txt = os.path.join(path, '*.txt')
+    txt_list = glob.glob(search_txt)
+    
+    if not txt_list:
+        raise FileNotFoundError(f"[ERROR] No camera calibration .txt file found inside: {path}")
+
+    with open(txt_list[0], "r") as f:
         camera_para = f.readlines()[0][1:-2]
         camera_para = camera_para.split(',')
         camera_para = list(map(float, camera_para))

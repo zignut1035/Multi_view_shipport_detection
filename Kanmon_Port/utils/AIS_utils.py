@@ -168,59 +168,12 @@ def data_coarse_process(AIS_current, AIS_last, camera_para, max_dis):
     return AIS_current
 
 
-# ── JSON poll loader ──────────────────────────────────────────────────────────
-
-def _load_json_polls(ais_path):
-    """Load all JSON poll files from ais_path, return sorted list of polls."""
-    polls = []
-    for fname in os.listdir(ais_path):
-        if not fname.endswith('.json'):
-            continue
-        m = re.search(r'epoch(\d+)', fname)
-        if not m:
-            continue
-        with open(os.path.join(ais_path, fname)) as f:
-            data = json.load(f)
-        polls.append(data)
-    polls.sort(key=lambda p: p['epoch'])
-    return polls
-
+# ── CSV Loader & AISPRO class (Pandas-native) ────────────────────────────────
 
 def _time_name_to_epoch(time_name):
-    """Convert '2026_05_22_00_28_40' back to Unix epoch (seconds)."""
+    """Convert '2026_05_25_19_17_10' back to Unix epoch (seconds)."""
     dt = datetime.strptime(time_name, "%Y_%m_%d_%H_%M_%S")
     return int(dt.replace(tzinfo=timezone.utc).timestamp())
-
-
-def _polls_to_dataframe(polls, current_epoch):
-    """
-    Walk polls up to current_epoch, keep latest state per vessel,
-    return as DataFrame with the columns AISPRO expects.
-    """
-    vessel_state = {}
-    for poll in polls:
-        if poll['epoch'] > current_epoch:
-            break
-        for v in poll.get('vessels', []):
-            vessel_state[v['mmsi']] = {
-                'mmsi':              int(v['mmsi']),
-                'lon':               v['lon'],
-                'lat':               v['lat'],
-                # null speed → small placeholder; flag so filter knows it's estimated
-                'speed':             v['speed']   if v['speed']   is not None else 0.5,
-                'course':            v['course']  if v['course']  is not None else 0.0,
-                'heading':           v['heading'] if v['heading'] is not None else 0.0,
-                'type':              v.get('type', 'Other'),
-                'timestamp':         v['received_ts'] * 1000,  # → ms to match pipeline
-                '_speed_estimated':  v['speed'] is None,
-            }
-    if not vessel_state:
-        return pd.DataFrame(columns=['mmsi', 'lon', 'lat', 'speed',
-                                     'course', 'heading', 'type', 'timestamp'])
-    return pd.DataFrame(list(vessel_state.values()))
-
-
-# ── AISPRO class (JSON-native) ────────────────────────────────────────────────
 
 class AISPRO(object):
     def __init__(self, ais_path, ais_file, im_shape, t):
@@ -230,9 +183,28 @@ class AISPRO(object):
         self.t        = t
         self.time_lim = 2
 
-        # Preload all JSON polls once at startup
-        self.polls = _load_json_polls(ais_path)
-        print(f"[AISPRO] Loaded {len(self.polls)} JSON polls from {ais_path}")
+        # 1. LOAD THE CSV DATA ONCE AT STARTUP
+        csv_full_path = os.path.join(ais_path, ais_file[0])
+        self.df_all = pd.read_csv(csv_full_path)
+        
+        # Ensure the time column is named 'timestamp' to match the script's logic
+        if 'epoch' in self.df_all.columns and 'timestamp' not in self.df_all.columns:
+            self.df_all.rename(columns={'epoch': 'timestamp'}, inplace=True)
+        elif 'received_ts' in self.df_all.columns and 'timestamp' not in self.df_all.columns:
+            self.df_all.rename(columns={'received_ts': 'timestamp'}, inplace=True)
+            
+        # --- NEW FIX: Convert Date Strings to Epoch Milliseconds! ---
+        # 1. Convert text like '2026-05-25 10:20:00' to actual datetime objects (UTC)
+        self.df_all['timestamp'] = pd.to_datetime(self.df_all['timestamp'], errors='coerce', utc=True)
+        
+        # 2. Drop any empty/invalid rows
+        self.df_all = self.df_all.dropna(subset=['timestamp'])
+        
+        # 3. Convert the datetime objects straight into UNIX milliseconds
+        self.df_all['timestamp'] = self.df_all['timestamp'].astype('int64') // 10**6
+        # ------------------------------------------------------------
+
+        print(f"[AISPRO] Successfully loaded {len(self.df_all)} rows from {ais_file[0]}")
 
         self.AIS_cur = pd.DataFrame(columns=['mmsi', 'lon', 'lat', 'speed',
                                              'course', 'heading', 'type', 'timestamp'])
@@ -248,10 +220,32 @@ class AISPRO(object):
         return AIS_cur, AIS_las, AIS_vis
 
     def read_ais(self, Time_name):
-        """Return vessel DataFrame for the given second (reads from preloaded JSON)."""
+        """Return vessel DataFrame for the given second using Pandas filtering."""
         try:
-            epoch = _time_name_to_epoch(Time_name)
-            return _polls_to_dataframe(self.polls, epoch)
+            # Convert video's current time to epoch milliseconds
+            target_epoch_ms = _time_name_to_epoch(Time_name) * 1000
+            
+            # Filter for all AIS data up to the current video frame
+            df_past = self.df_all[self.df_all['timestamp'] <= target_epoch_ms]
+            
+            if df_past.empty:
+                return pd.DataFrame(columns=['mmsi', 'lon', 'lat', 'speed',
+                                             'course', 'heading', 'type', 'timestamp'])
+            
+            # Get only the latest known location for each ship (MMSI)
+            df_latest = df_past.sort_values('timestamp').drop_duplicates('mmsi', keep='last').copy()
+            
+            # Fallback columns just in case your CSV is missing them
+            for col in ['speed', 'course', 'heading']:
+                if col not in df_latest.columns:
+                    df_latest[col] = 0.0
+            if 'type' not in df_latest.columns:
+                df_latest['type'] = 'Other'
+            if '_speed_estimated' not in df_latest.columns:
+                df_latest['_speed_estimated'] = False
+                
+            return df_latest
+
         except Exception as e:
             print(f"[AISPRO] read_ais error for {Time_name}: {e}")
             return pd.DataFrame(columns=['mmsi', 'lon', 'lat', 'speed',
@@ -259,7 +253,8 @@ class AISPRO(object):
 
     def data_tran(self, AIS_cur, AIS_vis, camera_para, timestamp):
         AIS_vis, AIS_vis_cur = transform(AIS_cur, AIS_vis, camera_para, self.im_shape)
-        AIS_vis = pd.concat([AIS_vis, AIS_vis_cur], ignore_index=True)
+        if not AIS_vis_cur.empty:
+            AIS_vis = pd.concat([AIS_vis, AIS_vis_cur], ignore_index=True)
         AIS_vis = AIS_vis.drop(
             AIS_vis[AIS_vis['timestamp'] < (timestamp // 1000 - self.time_lim * 60)].index
         )

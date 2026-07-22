@@ -25,7 +25,7 @@ mkdir -p "$SAVE_DIR/ais"
 cd "$SAVE_DIR" || exit
 
 # ── 2. Configuration ──────────────────────────────────────────────
-DURATION=1800         # 30 minutes total recording window
+DURATION=900         # 20 minutes total recording window
 AIS_INTERVAL=30
 
 echo "╔══════════════════════════════════════════════════════════╗"

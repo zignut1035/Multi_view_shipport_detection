@@ -11,7 +11,7 @@ API_KEY = ""
 
 CENTER_LAT = 51.908490
 CENTER_LON  = 4.485581
-RADIUS      = 0.3  # nautical miles
+RADIUS      = 0.35  # nautical miles
  
 OUTPUT_DIR = "ais_data_rotterdam"
 API_URL    = "https://api.datalastic.com/api/v0/vessel_inradius"
@@ -89,7 +89,7 @@ def main():
     # Setup argparse so command line arguments work
     parser = argparse.ArgumentParser(description="Fetch AIS data from Datalastic.")
     parser.add_argument("--interval", type=int, default=30,          help="Seconds to wait between API calls (default: 60)")
-    parser.add_argument("--duration", type=int, default=1800,        help="Total duration to run script in seconds (default: 1800)")
+    parser.add_argument("--duration", type=int, default=900,        help="Total duration to run script in seconds (default: 1800)")
     parser.add_argument("--output",   type=str, default="ais_data_rotterdam", help="Folder to save JSON snapshots (default: ais_data_rotterdam)")
     args = parser.parse_args()
  

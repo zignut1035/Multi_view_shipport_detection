@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rotterdam AIS — Trajectory Explorer</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:system-ui,-apple-system,sans-serif;color:#222}
+  #app{display:grid;grid-template-columns:340px 1fr;height:100vh}
+  #side{background:#f8fafc;border-right:1px solid #e2e8f0;display:flex;flex-direction:column;overflow:hidden}
+  #header{padding:14px 16px;border-bottom:1px solid #e2e8f0;background:#fff}
+  #header h1{margin:0;font-size:16px;font-weight:700}
+  #header .sub{font-size:11px;color:#64748b;margin-top:2px}
+  .group{padding:10px 16px;border-bottom:1px solid #e2e8f0;background:#fff}
+  label{font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.04em}
+  select{width:100%;margin-top:6px;padding:7px 8px;font-size:13px;border:1px solid #cbd5e1;border-radius:6px;background:#fff}
+  #stats{padding:10px 16px;background:#fff;font-size:12px;color:#475569;line-height:1.6;border-bottom:1px solid #e2e8f0}
+  #stats b{color:#0f172a}
+  #listArea{flex:1;overflow:auto;background:#fff}
+  /* single-vessel ping table */
+  .pings-table{width:100%;border-collapse:collapse;font-size:11px}
+  .pings-table th{position:sticky;top:0;background:#f1f5f9;padding:6px 8px;text-align:left;font-weight:600;border-bottom:1px solid #e2e8f0;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#475569}
+  .pings-table td{padding:5px 8px;border-bottom:1px solid #f1f5f9}
+  .pings-table tr.row{cursor:pointer}
+  .pings-table tr.row:hover{background:#eff6ff}
+  .pings-table tr.row.active{background:#dbeafe}
+  .pings-table td.src{font-family:ui-monospace,monospace;font-size:9px;color:#64748b;word-break:break-all}
+  /* all-vessels list */
+  .vlist{font-size:12px}
+  .vlist .vrow{display:grid;grid-template-columns:14px 1fr auto;gap:8px;align-items:center;padding:7px 12px;border-bottom:1px solid #f1f5f9;cursor:pointer}
+  .vlist .vrow:hover{background:#eff6ff}
+  .vlist .vrow.active{background:#dbeafe}
+  .vlist .swatch{width:12px;height:12px;border-radius:50%;border:1.5px solid #fff;box-shadow:0 0 0 1px #cbd5e1}
+  .vlist .vname{font-weight:600;color:#0f172a;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vlist .vmeta{color:#64748b;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vlist .pings{font-size:10px;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:10px;font-weight:600}
+  .vlist .vrow.full .pings{background:#dcfce7;color:#166534}
+  .vlist .vrow.partial .pings{background:#fef3c7;color:#92400e}
+  #filter{width:100%;padding:6px 8px;font-size:12px;border:1px solid #cbd5e1;border-radius:6px;margin-top:6px}
+  #map{height:100%;width:100%}
+  .ping-popup{font-size:12px;min-width:240px}
+  .ping-popup h3{margin:0 0 4px 0;font-size:13px}
+  .ping-popup .meta{color:#64748b;font-size:11px;margin-bottom:6px}
+  .ping-popup table{font-size:11px;width:100%}
+  .ping-popup td:first-child{color:#64748b;padding-right:8px}
+  .ping-popup .src{margin-top:6px;padding-top:6px;border-top:1px solid #e5e7eb;font-family:ui-monospace,monospace;font-size:10px;word-break:break-all}
+  .empty{padding:30px 16px;text-align:center;color:#94a3b8;font-size:13px}
+  .btn{padding:5px 10px;font-size:11px;border:1px solid #cbd5e1;border-radius:5px;background:#fff;cursor:pointer;font-weight:600;color:#334155}
+  .btn:hover{background:#f1f5f9}
+  .btn.primary{background:#0f172a;color:#fff;border-color:#0f172a}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="side">
+    <div id="header">
+      <h1>Rotterdam AIS Explorer</h1>
+      <div class="sub">All vessels at once, or pick one.</div>
+    </div>
+    <div class="group">
+      <label for="sessionSel">Session</label>
+      <select id="sessionSel"></select>
+    </div>
+    <div class="group">
+      <label for="modeSel">View</label>
+      <select id="modeSel">
+        <option value="all">All vessels (overview)</option>
+        <option value="one">Single vessel</option>
+      </select>
+      <div id="vesselSelWrap" style="display:none;margin-top:8px">
+        <label for="vesselSel">Vessel</label>
+        <select id="vesselSel"></select>
+      </div>
+      <div id="filterWrap" style="margin-top:8px">
+        <input id="filter" type="search" placeholder="Filter vessel list…">
+      </div>
+    </div>
+    <div id="stats"></div>
+    <div id="listArea"><div class="empty">Loading…</div></div>
+  </div>
+  <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.js"></script>
+<script src="data.js"></script>
+<script>
+// UPDATED MAP CENTER FOR ROTTERDAM PORT (Erasmusbrug / Kop van Zuid area)
+const map = L.map('map').setView([51.9075, 4.4859], 15);
+const baseOSM = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {attribution:'© OpenStreetMap', maxZoom:19});
+const baseLight = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+  {attribution:'© CartoDB', maxZoom:19});
+const baseSat = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  {attribution:'Esri', maxZoom:19});
+baseOSM.addTo(map);
+L.control.layers({"OpenStreetMap":baseOSM, "Light":baseLight, "Satellite":baseSat}).addTo(map);
+L.control.scale({metric:true, imperial:false}).addTo(map);
+
+let drawLayer = L.layerGroup().addTo(map);
+let vesselLayers = {};   // mmsi → {polyline, decorator, markers:[]}
+let markersByMmsi = {};  // mmsi → marker array (used in single mode)
+
+const sessionSel = document.getElementById('sessionSel');
+const modeSel    = document.getElementById('modeSel');
+const vesselSel  = document.getElementById('vesselSel');
+const vesselSelWrap = document.getElementById('vesselSelWrap');
+const filterInput = document.getElementById('filter');
+const statsEl    = document.getElementById('stats');
+const listArea   = document.getElementById('listArea');
+
+// session dropdown
+Object.keys(AIS_DATA).sort().forEach(label => {
+  const o = document.createElement('option');
+  o.value = label;
+  o.textContent = `${label} (${AIS_DATA[label].n_polls} polls, ${AIS_DATA[label].vessels.length} vessels)`;
+  sessionSel.appendChild(o);
+});
+
+function currentSession() { return AIS_DATA[sessionSel.value]; }
+
+function fillVesselDropdown() {
+  vesselSel.innerHTML = '';
+  currentSession().vessels.forEach((v, i) => {
+    const o = document.createElement('option');
+    o.value = i;
+    o.textContent = `${v.mmsi} · ${v.name} (${v.type}, ${v.n_pings} pings)`;
+    vesselSel.appendChild(o);
+  });
+}
+
+function fmt(n, d=4){ if(n===null||n===undefined) return '—'; return typeof n==='number'? n.toFixed(d):n; }
+function hav(a,b){ const R=6371000, t=x=>x*Math.PI/180;
+  const dLa=t(b.lat-a.lat), dLo=t(b.lon-a.lon);
+  const s=Math.sin(dLa/2)**2 + Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dLo/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));
+}
+
+function buildPopup(v, p, i, n) {
+  return `<div class="ping-popup">
+    <h3>${v.name}</h3>
+    <div class="meta">${v.type} · MMSI ${v.mmsi}</div>
+    <div style="background:#f3f4f6;padding:6px 8px;border-radius:4px;margin-bottom:6px">
+      <b>Ping ${i+1} of ${n}</b><br>${p.dt} UTC
+    </div>
+    <table>
+      <tr><td>Lat</td><td><b>${p.lat.toFixed(6)}</b></td></tr>
+      <tr><td>Lon</td><td><b>${p.lon.toFixed(6)}</b></td></tr>
+      <tr><td>Speed</td><td>${p.speed} kn</td></tr>
+      <tr><td>Course</td><td>${p.course}°</td></tr>
+      <tr><td>Heading</td><td>${p.heading}</td></tr>
+      <tr><td>Nav stat</td><td>${p.nav_stat || '—'}</td></tr>
+      <tr><td>Rx ts</td><td>${p.received_ts}</td></tr>
+    </table>
+    <div class="src"><b>Source:</b><br>${p.source}</div>
+  </div>`;
+}
+
+function drawVesselTrack(v, opts) {
+  // opts: {weight, opacity, withStartEnd, withDecorator}
+  opts = Object.assign({weight:3, opacity:0.7, withStartEnd:false, withDecorator:true,
+                        markerRadius:6}, opts);
+  const pts = v.points;
+  const latlngs = pts.map(p => [p.lat, p.lon]);
+  const col = v.color;
+  const refs = {polyline:null, decorator:null, markers:[], startEnd:[]};
+
+  if (latlngs.length >= 2) {
+    refs.polyline = L.polyline(latlngs, {color:col, weight:opts.weight, opacity:opts.opacity});
+    refs.polyline.addTo(drawLayer);
+    if (opts.withDecorator && latlngs.length >= 3 && L.polylineDecorator) {
+      refs.decorator = L.polylineDecorator(refs.polyline, {patterns:[{
+        offset:18, repeat:34,
+        symbol: L.Symbol.arrowHead({pixelSize:9, polygon:false,
+          pathOptions:{stroke:true, color:col, weight:2, opacity:0.85}})
+      }]});
+      refs.decorator.addTo(drawLayer);
+    }
+  }
+
+  pts.forEach((p, i) => {
+    const m = L.circleMarker([p.lat, p.lon], {
+      radius:opts.markerRadius, color:'#fff', weight:2, fillColor:col, fillOpacity:1
+    });
+    m.bindTooltip(`${v.name} (${v.mmsi}) · #${i+1}/${pts.length} · ${p.dt.split(' ')[1]} · ${fmt(p.speed,1)} kn`,
+                  {direction:'top', offset:[0,-6]});
+    m.bindPopup(buildPopup(v, p, i, pts.length));
+    m.addTo(drawLayer);
+    refs.markers.push(m);
+  });
+
+  if (opts.withStartEnd && latlngs.length >= 2) {
+    const s = L.marker(latlngs[0], {icon:L.divIcon({className:'',
+      html:'<div style="background:#22c55e;border:2px solid #fff;border-radius:50%;width:14px;height:14px;box-shadow:0 0 3px rgba(0,0,0,.5)"></div>'})})
+      .bindPopup(`<b>START</b> — ${v.name}<br>${pts[0].dt} UTC<br><span style="font-family:monospace;font-size:10px">${pts[0].source}</span>`)
+      .addTo(drawLayer);
+    const e = L.marker(latlngs[latlngs.length-1], {icon:L.divIcon({className:'',
+      html:'<div style="background:#ef4444;border:2px solid #fff;border-radius:50%;width:14px;height:14px;box-shadow:0 0 3px rgba(0,0,0,.5)"></div>'})})
+      .bindPopup(`<b>END</b> — ${v.name}<br>${pts[pts.length-1].dt} UTC<br><span style="font-family:monospace;font-size:10px">${pts[pts.length-1].source}</span>`)
+      .addTo(drawLayer);
+    refs.startEnd = [s, e];
+  }
+  return refs;
+}
+
+function render() {
+  drawLayer.clearLayers();
+  vesselLayers = {};
+  markersByMmsi = {};
+  const sess = currentSession();
+  if (!sess) return;
+
+  if (modeSel.value === 'one') {
+    renderSingle(sess);
+  } else {
+    renderAll(sess);
+  }
+}
+
+// ----- Single vessel -----
+function renderSingle(sess) {
+  vesselSelWrap.style.display = 'block';
+  filterInput.style.display = 'none';
+
+  const v = sess.vessels[+vesselSel.value];
+  if (!v) return;
+  const refs = drawVesselTrack(v, {weight:3, opacity:0.75, withStartEnd:true,
+                                   withDecorator:true, markerRadius:8});
+  vesselLayers[v.mmsi] = refs;
+  markersByMmsi[v.mmsi] = refs.markers;
+
+  const latlngs = v.points.map(p => [p.lat, p.lon]);
+  if (latlngs.length === 1) map.setView(latlngs[0], 17);
+  else map.fitBounds(L.latLngBounds(latlngs).pad(0.2));
+
+  // stats
+  let dist = 0;
+  for (let i=1; i<v.points.length; i++) dist += hav(v.points[i-1], v.points[i]);
+  const maxSpd = Math.max(...v.points.map(p => p.speed || 0));
+  const dur = (v.points[v.points.length-1].epoch - v.points[0].epoch) || 0;
+  statsEl.innerHTML = `
+    <b>${v.name}</b> <span style="color:#94a3b8">· ${v.type}</span><br>
+    MMSI <b>${v.mmsi}</b><br>
+    Pings: <b>${v.n_pings}</b> of ${sess.n_polls} polls
+      ${v.n_pings === sess.n_polls
+        ? '<span style="color:#16a34a">✓ full</span>'
+        : `<span style="color:#ea580c">⚠ missing ${sess.n_polls - v.n_pings}</span>`}<br>
+    Range: ${v.points[0].dt.split(' ')[1]} → ${v.points[v.points.length-1].dt.split(' ')[1]} (${Math.floor(dur/60)}m ${dur%60}s)<br>
+    Distance: <b>${dist.toFixed(0)} m</b> · Max: <b>${maxSpd.toFixed(1)} kn</b>
+  `;
+
+  // ping table
+  const rows = v.points.map((p, i) => `
+    <tr class="row" data-i="${i}">
+      <td>${i+1}</td><td>${p.dt.split(' ')[1]}</td>
+      <td>${p.lat.toFixed(5)}</td><td>${p.lon.toFixed(5)}</td>
+      <td>${fmt(p.speed,1)}</td><td>${fmt(p.course,0)}</td>
+      <td class="src" title="${p.source}">${p.source}</td>
+    </tr>`).join('');
+  listArea.innerHTML = `<table class="pings-table">
+    <thead><tr><th>#</th><th>Time</th><th>Lat</th><th>Lon</th><th>Sp</th><th>Crs</th><th>Source JSON</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+  listArea.querySelectorAll('tr.row').forEach(tr => {
+    tr.addEventListener('click', () => {
+      const i = +tr.dataset.i;
+      listArea.querySelectorAll('tr.row').forEach(r=>r.classList.remove('active'));
+      tr.classList.add('active');
+      refs.markers[i].openPopup();
+      map.panTo(refs.markers[i].getLatLng());
+    });
+  });
+}
+
+// ----- All vessels -----
+function renderAll(sess) {
+  vesselSelWrap.style.display = 'none';
+  filterInput.style.display = 'block';
+
+  const allLatLngs = [];
+  sess.vessels.forEach(v => {
+    const refs = drawVesselTrack(v, {weight:2.5, opacity:0.65, withStartEnd:false,
+                                     withDecorator:true, markerRadius:5});
+    vesselLayers[v.mmsi] = refs;
+    markersByMmsi[v.mmsi] = refs.markers;
+    v.points.forEach(p => allLatLngs.push([p.lat, p.lon]));
+  });
+  if (allLatLngs.length) map.fitBounds(L.latLngBounds(allLatLngs).pad(0.05));
+
+  // stats
+  const full = sess.vessels.filter(v => v.n_pings === sess.n_polls).length;
+  const partial = sess.vessels.length - full;
+  const totalPings = sess.vessels.reduce((a,v) => a + v.n_pings, 0);
+  statsEl.innerHTML = `
+    <b>${sessionSel.value}</b><br>
+    <b>${sess.vessels.length}</b> vessels · <b>${sess.n_polls}</b> polls · <b>${totalPings.toLocaleString()}</b> pings<br>
+    <span style="color:#16a34a">${full} full coverage</span> ·
+    <span style="color:#ea580c">${partial} partial</span><br>
+    <span style="color:#94a3b8;font-size:11px">Hover a row to highlight · click a row for single view</span>
+  `;
+
+  // vessel list
+  const rows = sess.vessels.map((v, i) => {
+    const full = v.n_pings === sess.n_polls;
+    return `<div class="vrow ${full?'full':'partial'}" data-mmsi="${v.mmsi}" data-i="${i}">
+      <div class="swatch" style="background:${v.color}"></div>
+      <div>
+        <div class="vname">${v.name}</div>
+        <div class="vmeta">${v.mmsi} · ${v.type}</div>
+      </div>
+      <div class="pings">${v.n_pings}/${sess.n_polls}</div>
+    </div>`;
+  }).join('');
+  listArea.innerHTML = `<div class="vlist">${rows}</div>`;
+
+  // interactions
+  listArea.querySelectorAll('.vrow').forEach(row => {
+    const mmsi = row.dataset.mmsi;
+    row.addEventListener('mouseenter', () => highlightVessel(mmsi, true));
+    row.addEventListener('mouseleave', () => highlightVessel(mmsi, false));
+    row.addEventListener('click', () => {
+      modeSel.value = 'one';
+      vesselSel.value = row.dataset.i;
+      render();
+    });
+  });
+
+  applyFilter();
+}
+
+function highlightVessel(mmsi, on) {
+  const refs = vesselLayers[mmsi];
+  if (!refs) return;
+  if (refs.polyline) {
+    refs.polyline.setStyle({weight: on ? 5 : 2.5, opacity: on ? 1 : 0.65});
+    if (on) refs.polyline.bringToFront();
+  }
+  refs.markers.forEach(m => {
+    m.setStyle({radius: on ? 8 : 5, weight: on ? 3 : 2});
+    if (on) m.bringToFront();
+  });
+}
+
+function applyFilter() {
+  const q = filterInput.value.trim().toLowerCase();
+  listArea.querySelectorAll('.vrow').forEach(r => {
+    const text = r.textContent.toLowerCase();
+    r.style.display = (!q || text.includes(q)) ? '' : 'none';
+  });
+}
+
+sessionSel.addEventListener('change', () => { fillVesselDropdown(); render(); });
+modeSel.addEventListener('change', render);
+vesselSel.addEventListener('change', render);
+filterInput.addEventListener('input', applyFilter);
+
+fillVesselDropdown();
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+# Train and validation image directories
+train: images/train
+val: images/val
+
+# Number of classes
+nc: 1
+
+# Class names
+names: ['vessel']

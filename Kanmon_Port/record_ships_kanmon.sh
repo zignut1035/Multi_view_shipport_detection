@@ -19,7 +19,7 @@ mkdir -p "$SAVE_DIR/ais"
 cd "$SAVE_DIR" || exit
 
 # ── Configuration ────────────────────────────────────────────────
-DURATION=1800
+DURATION=1200
 AIS_INTERVAL=30
 
 echo "╔══════════════════════════════════════════════════════════╗"
@@ -131,7 +131,7 @@ echo "AIS PID: $AIS_PID"
 
 record_stream \
     "cam1_shimonoseki" \
-    "https://www.youtube.com/watch?v=VUXXORrhIFs" \
+    "https://www.youtube.com/watch?v=ZOScw9H4D94" \
     "$SAVE_DIR/cam1_shimonoseki/cam1_shimonoseki_${RECORD_EPOCH}.%(ext)s" \
     "$SAVE_DIR/cam1_shimonoseki/cam1_error_log.log" &
 CAM1_PID=$!
@@ -178,56 +178,30 @@ else
     echo "✓ cam1_first_frame.jpg"
     echo "✓ cam2_first_frame.jpg"
 
-    # ── 6b. Check and fix fps mismatch ───────────────────────────
+    # ── 6b. Report fps (NO re-encoding) ──────────────────────────
+    # Earlier versions of this script re-encoded whichever camera had
+    # the higher native fps down to match the other, since the
+    # downstream fusion pipeline used to assume both cameras shared a
+    # common frame rate. That assumption no longer holds: the fusion
+    # pipeline now runs each camera on its own independent clock,
+    # driven by that camera's own real fps, so mismatched fps between
+    # cam1 and cam2 is no longer a problem it needs to solve here.
+    # Removing the re-encode step avoids the re-compression quality
+    # loss it introduced (x264 crf 18) and the .bak files it left
+    # behind, and captures stay exactly as recorded.
     CAM1_FPS=$(ffprobe -v error -select_streams v:0 \
         -show_entries stream=avg_frame_rate \
         -of default=noprint_wrappers=1:nokey=1 \
-        "$CAM1_FILE" | awk -F'/' '{if($2) printf "%.0f\n", $1/$2; else print $1}')
+        "$CAM1_FILE" | awk -F'/' '{if($2) printf "%.2f\n", $1/$2; else print $1}')
 
     CAM2_FPS=$(ffprobe -v error -select_streams v:0 \
         -show_entries stream=avg_frame_rate \
         -of default=noprint_wrappers=1:nokey=1 \
-        "$CAM2_FILE" | awk -F'/' '{if($2) printf "%.0f\n", $1/$2; else print $1}')
+        "$CAM2_FILE" | awk -F'/' '{if($2) printf "%.2f\n", $1/$2; else print $1}')
 
     echo ""
-    echo "cam1 fps : $CAM1_FPS"
-    echo "cam2 fps : $CAM2_FPS"
-
-    if [ "$CAM1_FPS" -gt "$CAM2_FPS" ]; then
-        TARGET_FPS=$CAM2_FPS
-        echo "⚠️  cam1 is faster — re-encoding cam1 to ${TARGET_FPS}fps..."
-        EXT="${CAM1_FILE##*.}"
-        CAM1_FIXED="${CAM1_FILE%.$EXT}_${TARGET_FPS}fps.$EXT"
-        ffmpeg -i "$CAM1_FILE" \
-               -vf fps=$TARGET_FPS \
-               -r $TARGET_FPS \
-               -fps_mode cfr \
-               -c:v libx264 -preset fast -crf 18 \
-               -c:a copy \
-               "$CAM1_FIXED"
-        mv "$CAM1_FILE" "${CAM1_FILE%.$EXT}.bak"
-        mv "$CAM1_FIXED" "$CAM1_FILE"
-        echo "✓ cam1 re-encoded to ${TARGET_FPS}fps"
-
-    elif [ "$CAM2_FPS" -gt "$CAM1_FPS" ]; then
-        TARGET_FPS=$CAM1_FPS
-        echo "⚠️  cam2 is faster — re-encoding cam2 to ${TARGET_FPS}fps..."
-        EXT="${CAM2_FILE##*.}"
-        CAM2_FIXED="${CAM2_FILE%.$EXT}_${TARGET_FPS}fps.$EXT"
-        ffmpeg -i "$CAM2_FILE" \
-               -vf fps=$TARGET_FPS \
-               -r $TARGET_FPS \
-               -fps_mode cfr \
-               -c:v libx264 -preset fast -crf 18 \
-               -c:a copy \
-               "$CAM2_FIXED"
-        mv "$CAM2_FILE" "${CAM2_FILE%.$EXT}.bak"
-        mv "$CAM2_FIXED" "$CAM2_FILE"
-        echo "✓ cam2 re-encoded to ${TARGET_FPS}fps"
-
-    else
-        echo "✓ fps match — no re-encode needed"
-    fi
+    echo "cam1 fps : $CAM1_FPS  (no re-encoding -- kept as recorded)"
+    echo "cam2 fps : $CAM2_FPS  (no re-encoding -- kept as recorded)"
 
     # ── 6c. Print durations ───────────────────────────────────────
     CAM1_DUR=$(ffprobe -v error -show_entries format=duration \
@@ -254,6 +228,10 @@ Record epoch : $RECORD_EPOCH
 cam1         : $(basename "$CAM1_FILE")   fps: $CAM1_FPS   duration: ${CAM1_DUR}s
 cam2         : $(basename "$CAM2_FILE")   fps: $CAM2_FPS   duration: ${CAM2_DUR}s
 AIS files    : $SAVE_DIR/ais/
+
+NOTE: cam1/cam2 are kept at their native fps (no re-encoding). The
+fusion pipeline runs each camera on its own independent clock derived
+from its own real fps, so a fps mismatch here does not need fixing.
 
 SYNC STEPS:
 1. Open cam1_first_frame.jpg and cam2_first_frame.jpg
