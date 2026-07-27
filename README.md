@@ -1,27 +1,40 @@
-# 🚢 Kanmon Strait Dual-Camera Ship Tracking with AIS Synchronization
+# 🚢 Rotterdam Port Dual-Camera Ship Tracking with AIS Fusion
 
-> A multi-modal vessel tracking pipeline that synchronizes live AIS data with dual-camera video feeds from the Kanmon Strait, fusing visual object detection with real-time ship position data.
+> A real-time vessel tracking pipeline that fuses live AIS data with dual-camera video feeds from the Erasmusbrug crossing in the Port of Rotterdam — detecting ships visually, matching them to real AIS identities, and synthesizing plausible identities for vessels with no AIS coverage at all.
 
 ![Python](https://img.shields.io/badge/Python-3.x-blue?style=flat-square&logo=python)
 ![OpenCV](https://img.shields.io/badge/OpenCV-Computer%20Vision-green?style=flat-square&logo=opencv)
-![AIS](https://img.shields.io/badge/AIS-Datalastic%20API-navy?style=flat-square)
-![Platform](https://img.shields.io/badge/Platform-WSL%20%2F%20Linux-orange?style=flat-square)
-![Storage](https://img.shields.io/badge/Cloud-CSC%20Allas-blueviolet?style=flat-square)
+![YOLOX](https://img.shields.io/badge/YOLOX-Object%20Detection-red?style=flat-square)
+![DeepSort](https://img.shields.io/badge/DeepSort-Tracking-orange?style=flat-square)
+![AIS](https://img.shields.io/badge/AIS-Vessel%20Data-navy?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Research%20Prototype-yellow?style=flat-square)
 
 ---
+<img width="2048" height="946" alt="image" src="https://github.com/user-attachments/assets/c1a11520-bf5e-4eb4-8ef1-8f69a7e4227f" />
+<img width="2048" height="946" alt="image" src="https://github.com/user-attachments/assets/98c204bb-4a53-46e2-b4b2-46e60d23abbe" />
 
 ## Overview
 
-The Kanmon Strait (関門海峡) is one of the busiest waterways in Japan, connecting the Shimonoseki and Moji sides between Honshu and Kyushu. This project builds an automated pipeline that:
+The Erasmusbrug crossing is one of the most heavily trafficked stretches of
+the Nieuwe Maas in the Port of Rotterdam. This project builds a dual-camera
+fusion pipeline that:
 
-1. **Simultaneously records** two live YouTube camera streams of the strait (Shimonoseki side + Moji side)
-2. **Polls real-time AIS vessel position data** from the Datalastic API at regular intervals, synchronized to the recording epoch
-3. **Fuses visual ship detections with AIS identities** — matching tracked objects in video to named vessels with MMSI, speed, heading, and navigational status
-4. **Outputs a side-by-side annotated dual-view video** with vessel trajectories and AIS overlays drawn on both cameras
-<img width="1600" height="500" alt="image" src="https://github.com/user-attachments/assets/6dfe12cd-2b06-41ff-89f5-1356e479cddc" />
+1. **Tracks vessels visually** in real time from two independent camera
+   angles (KPN building + Kop van Zuid), using YOLOX detection and DeepSort
+   tracking
+2. **Projects real AIS vessel data** into each camera's own image plane,
+   using per-camera geometric calibration
+3. **Matches visual tracks to real AIS identities** using a dual-gate
+   (distance + heading) criterion with multi-tick confirmation
+4. **Synthesizes plausible identities** — position, speed, and course
+   genuinely back-projected from a vessel's own tracked pixels — for
+   moving vessels that have no real AIS match, so every real ship in frame
+   gets an identity panel, not just the ones broadcasting AIS
+5. **Outputs a side-by-side annotated dual-view video**, plus a synthetic
+   AIS log that can optionally be merged back in for a stricter second pass
 
-The result is a temporally synchronized, identity-aware ship tracking dataset for maritime research and vessel behavior analysis.
+The result is an identity-aware vessel tracking system that stays honest
+about which identities are real AIS data and which are estimated.
 
 ---
 
@@ -29,37 +42,33 @@ The result is a temporally synchronized, identity-aware ship tracking dataset fo
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        DATA COLLECTION                          │
-│                                                                 │
-│  YouTube Live Stream          Datalastic AIS API               │
-│  cam1 (Shimonoseki) ──┐       (every 30s polling)              │
-│  cam2 (Moji)         ──┼──► Bash Orchestrator ◄── AIS Tracker  │
-│                        │    (collect.sh)      (kanmon_AIS_      │
-│                        │                       tracker.py)      │
-│                   SAVE_DIR/                                     │
-│                   ├── cam1_shimonoseki/  (video + logs)        │
-│                   ├── cam2_moji/         (video + logs)        │
-│                   └── ais/               (JSON snapshots)      │
+│                    DUAL-CAMERA FUSION PIPELINE                  │
+│                    (main_dual_fusion.py)                        │
+│                                                                   │
+│  cam1 (KPN)      ──► AISPRO ──► VISPRO ──► FUSPRO ──► DRAW ──┐  │
+│  854x480                                                       ├─► hstack ──► combined_dual_view.mp4
+│  cam2 (Kop van Zuid) ─► AISPRO ──► VISPRO ──► FUSPRO ──► DRAW ─┘  │
+│  1980x1080                                                       │
+│                                                                   │
+│  AISPRO: projects real AIS positions onto this camera's frame   │
+│  VISPRO: YOLOX detection + DeepSort tracking (per-camera ROI/    │
+│          upscale + confidence tuning)                            │
+│  FUSPRO: matches visual tracks to real AIS identities             │
+│          (dual-gate + confirmation + plausibility checks)        │
+│  DRAW:   renders matches; synthesizes identity for moving,       │
+│          unmatched vessels via a shared cross-camera registry    │
 └─────────────────────────────────────────────────────────────────┘
                               │
-                              ▼ (post-collection)
+                              ▼ (optional second pass)
 ┌─────────────────────────────────────────────────────────────────┐
-│                      FUSION PIPELINE                            │
-│                       (main.py)                                 │
-│                                                                 │
-│  cam1 video ──► AISPRO ──► VISPRO ──► FUSPRO ──► DRAW ──┐      │
-│                                                           ├──► hstack ──► combined_dual_view.mp4
-│  cam2 video ──► AISPRO ──► VISPRO ──► FUSPRO ──► DRAW ──┘      │
-│                                                                 │
-│  AISPRO: projects AIS positions onto camera frame               │
-│  VISPRO: visual object detection & tracking                     │
-│  FUSPRO: fuses AIS identity with visual track                   │
-│  DRAW:   renders trajectories & labels on frame                 │
+│                    BOOTSTRAP REFINEMENT                          │
+│                                                                   │
+│  synthetic_ais_log.csv ──► convert_synthetic_to_ais.py ──►      │
+│      merged AIS csv ──► main_dual_fusion.py --ais-csv <merged>  │
+│                                                                   │
+│  Previously-synthetic vessels now evaluated by FUSPRO's own      │
+│  real matching gates, instead of the lighter synthesis path.     │
 └─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-                    CSC Allas Cloud Storage
-                    (rclone upload per session)
 ```
 
 ---
@@ -67,143 +76,113 @@ The result is a temporally synchronized, identity-aware ship tracking dataset fo
 ## Repository Structure
 
 ```
-kanmon/
-├── collect.sh                  # Main orchestrator: records video + AIS in sync
-├── kanmon_AIS_tracker.py       # AIS poller: fetches vessel snapshots from Datalastic
-├── main.py                     # Fusion pipeline: processes dual video + AIS
-├── cookies.txt                 # YouTube auth cookies (yt-dlp)
+Rotterdam_Port/
+├── main_dual_fusion.py         # Orchestrator: runs both camera pipelines in sync
+├── convert_synthetic_to_ais.py # Converts + merges synthetic log for the second pass
+├── cam1_para.txt                # cam1 (KPN) camera calibration
+├── cam2_para.txt                # cam2 (Kop van Zuid) camera calibration
 └── utils/
-    ├── file_read.py            # Session config + AIS file initialization
-    ├── AIS_utils.py            # AISPRO: AIS-to-image projection
-    ├── VIS_utils.py            # VISPRO: visual tracking
-    ├── FUS_utils.py            # FUSPRO: AIS-visual fusion
-    ├── draw.py                 # DRAW: trajectory & label rendering
-    └── gen_result.py           # Result export per timestamp
+    ├── file_read.py             # Session config + video/AIS file discovery
+    ├── AIS_utils.py             # AISPRO: AIS-to-image projection
+    ├── VIS_utils.py             # VISPRO: detection + tracking
+    ├── FUS_utils.py             # FUSPRO: AIS-visual fusion + matching gates
+    ├── draw.py                  # DRAW: rendering + synthetic AIS assignment
+    └── gen_result.py            # Per-timestamp result export
 ```
-
----
-
-## Data Collection (`collect.sh`)
-
-The bash script orchestrates all three parallel processes with a shared **record epoch** so video and AIS data are temporally aligned.
-
-| Parameter | Value |
-|---|---|
-| Session duration | 900s (30 minutes) |
-| AIS polling interval | Every 30 seconds |
-| Camera 1 | Shimonoseki side live stream |
-| Camera 2 | Moji side live stream |
-| Video tool | `yt-dlp` with Node.js JS runtime |
-| Auto-restart | Yes — streams are re-joined on unexpected disconnect |
-| Cloud upload | `rclone` → CSC Allas after session completes |
-
-### Session Output Structure
-
-```
-sessions/
-└── 2025-06-01_14-30/
-    ├── cam1_shimonoseki/
-    │   ├── cam1_shimonoseki_<epoch>.mp4
-    │   └── cam1_error_log.log
-    ├── cam2_moji/
-    │   ├── cam2_moji_<epoch>.mp4
-    │   └── cam2_error_log.log
-    ├── ais/
-    │   └── ais_20250601T143000Z_epoch<N>.json
-    ├── cam1_first_frame.jpg        ← for manual sync check
-    ├── cam2_first_frame.jpg
-    └── HOW_TO_SYNC.txt             ← OSD-based sync instructions
-```
-
-### Post-Collection Processing
-
-After recording, the script automatically:
-- Extracts the **first frame** of each camera for OSD timestamp comparison
-- Detects and fixes **FPS mismatches** between cameras (re-encodes the faster stream via `ffmpeg`)
-- Checks for **duration mismatches** (>5s gap triggers a trim warning)
-- Writes `HOW_TO_SYNC.txt` with step-by-step manual sync instructions
-
----
-
-## AIS Tracker (`kanmon_AIS_tracker.py`)
-<img width="530" height="297" alt="{B7AC337D-3F30-4994-BAB6-E7C42B3FF1DF}" src="https://github.com/user-attachments/assets/38f985c5-e23a-454d-82ed-71236636f073" />
-
-Polls the **Datalastic `vessel_inradius` API** around the center of the Kanmon Strait.
-
-| Parameter | Value |
-|---|---|
-| Center coordinates | 33.954331°N, 130.954801°E |
-| Radius | 1.8 nautical miles |
-| API | Datalastic v0 |
-
-Each JSON snapshot includes:
-
-```json
-{
-  "timestamp_utc": "2025-06-01T14:30:00+00:00",
-  "epoch": 1748780000,
-  "record_epoch": 1748779800,
-  "offset_seconds": 200,
-  "poll_index": 7,
-  "vessel_count": 12,
-  "vessels": [
-    {
-      "mmsi": "431000000",
-      "name": "VESSEL NAME",
-      "lat": 33.952,
-      "lon": 130.957,
-      "speed": 8.4,
-      "course": 270,
-      "heading": 268,
-      "nav_stat": "Under way using engine"
-    }
-  ]
-}
-```
-
-The `offset_seconds` field links each AIS poll to the exact second within the video recording, enabling frame-accurate synchronization.
-
----
-
-## Fusion Pipeline (`main_dual_fusion.py`)
-
-Processes the recorded dual-camera video alongside the AIS JSON snapshots.
-
-### Per-Frame Processing
-
-For each synchronized frame from both cameras:
-
-```
-Frame (cam1 or cam2)
-    │
-    ├─► AISPRO.process()   — projects AIS vessel coordinates onto image plane
-    │                         using camera calibration parameters
-    │
-    ├─► VISPRO.feedCap()   — runs visual object detection & multi-object tracking
-    │                         with anti-jitter filtering
-    │
-    ├─► FUSPRO.fusion()    — matches visual tracks to AIS vessel identities
-    │                         by minimizing projected position distance
-    │
-    └─► DRAW.draw_traj()   — renders trajectories, MMSI labels, speed/heading
-                              annotations on the frame
-```
-
-### Output
-
-- `combined_dual_view.mp4` — side-by-side annotated video of both cameras
-- Per-second CSVs with fused track results for each camera
 
 ---
 
 ## Camera Setup
 
-| Camera | Location | View |
-|---|---|---|
-| cam1 | Shimonoseki (Honshu side) | Eastbound shipping lane |
-| cam2 | Moji (Kyushu side) | Westbound shipping lane |
+| Camera | Location | Resolution | Notes |
+|---|---|---|---|
+| cam1 | KPN building | 854×480 | ROI-cropped + upscaled for small/distant ships, lower confidence floor |
+| cam2 | Kop van Zuid | 1980×1080 | Full-frame detection |
 
-Both cameras stream publicly via YouTube Live with OSD timestamps visible on-screen, used for manual sync verification.
+Each camera runs on its **own independent clock**, driven by its own
+measured fps — not a shared or guessed timestamp — so AIS lookups stay
+correctly aligned even when the two cameras' frame rates differ.
+
+---
+
+## Camera Calibration
+
+Each camera's real-world geometry (`cam1_para.txt` / `cam2_para.txt`) was
+fitted from real correspondence points — back-projecting a tracked pixel to
+lat/lon and comparing against the vessel's known real position.
+
+| Issue found | Fix applied |
+|---|---|
+| Unconstrained least-squares fit converged to a numerically accurate but physically impossible calibration (absurd mounting height/tilt) | Bounded the parameter search to physically plausible ranges |
+| A fitted heading ~150° off true bearing still passed the pixel-reprojection objective | Added an independent, application-level visibility check as a second, separate validation |
+
+**Known limitation:** cam1's calibration is validated only along the real
+target ship's own transit path; accuracy elsewhere in frame (particularly
+near the edges) is unconfirmed.
+
+---
+
+## Real AIS Matching (`FUS_utils.py`)
+
+| Gate | Threshold | Purpose |
+|---|---|---|
+| Distance | < 300px | Base positional match |
+| Heading agreement | < 60° | Confirms direction of travel matches |
+| Distance override | < 100px (any track), < 220px (new tracks only) | Bypasses the heading gate when position alone is a strong match — track-age-gated so it can't reopen previously-fixed wrong-ship mismatches |
+| Motion check | ≥ displacement/size-change threshold | Excludes persistently static false positives from matching entirely |
+| Back-projection plausibility | ≤ 1200m implied distance from camera | Excludes detections that don't correspond to a real position on the water |
+| Confirmed-match re-validation | every tick | A locked match is continuously re-checked, not permanent |
+
+---
+
+## Synthetic AIS Assignment (`draw.py`)
+
+For a genuinely moving, visually tracked vessel with **no real AIS match**:
+
+```
+tracked pixel position
+      │
+      ▼
+back-projected to real-world lat/lon (camera's own calibration)
+      │
+      ▼
+speed/course derived from own recent real motion
+(minimum real-time sampling window — not fixed frame count —
+ to avoid amplifying pixel jitter into implausible speed readings)
+      │
+      ▼
+identity assigned via SHARED REGISTRY
+(keyed on real-world position + time, not track ID —
+ survives tracker reacquisition AND camera handoff)
+```
+
+| Safeguard | What it prevents |
+|---|---|
+| Minimum trusted history window | Noise-amplified speed from very short-lived tracks |
+| Absolute speed ceiling | An implausible reading getting displayed at all |
+| Max-change-per-update check | A sudden implausible jump between consecutive readings |
+| Forced-unfreeze after N rejections | Display getting stuck frozen indefinitely under persistent noise |
+| Course-holding | A noise-dominated bearing overwriting a reliable prior course |
+| Cross-camera reconnection tolerance | Tighter than same-camera reconnection — two different real vessels are a real risk across cameras |
+| Optional reference blending | A specific synthetic vessel can blend toward a known real ship's actual kinematics, scoped to one MMSI only |
+
+---
+
+## Bootstrap Two-Pass Workflow
+
+```bash
+# Pass 1 -- normal run, produces synthetic_ais_log.csv
+python3 main_dual_fusion.py --session <session_id>
+
+# Convert + merge with real AIS data
+python3 convert_synthetic_to_ais.py \
+    --synthetic-csv /path/to/result_dual/<session>/synthetic_ais_log.csv \
+    --out rotterdam_merged_<session>.csv \
+    --merge-with rotterdam_interpolated_<session>.csv
+
+# Pass 2 -- previously-synthetic vessels now matched by FUSPRO's real gates
+python3 main_dual_fusion.py --session <session_id> --ais-csv rotterdam_merged_<session>.csv
+```
 
 ---
 
@@ -213,66 +192,57 @@ Both cameras stream publicly via YouTube Live with OSD timestamps visible on-scr
 |---|---|
 | Python | Core pipeline |
 | OpenCV | Video capture, frame processing, rendering |
-| `yt-dlp` | Live stream recording |
-| `ffmpeg` | FPS normalization, frame extraction |
-| `ffprobe` | Duration and FPS detection |
-| Datalastic API | Real-time AIS vessel data |
-| `requests` | AIS API calls with retry logic |
-| `rclone` | Upload sessions to CSC Allas cloud |
-| `imutils` | Frame resizing for display |
-| Pandas / NumPy | Track data management |
+| YOLOX | Ship detection |
+| DeepSort | Multi-object tracking |
+| geopy / pyproj | Real-world distance + geodesic projection math |
+| Pandas / NumPy | Track and AIS data management |
+| imutils | Frame resizing for display |
 
 ---
 
 ## Installation & Usage
 
 ```bash
-# Clone the repository
-git clone https://github.com/zignut1035/Kanmon_Port.git
+# Run a session
+python3 main_dual_fusion.py --session 2026-05-27_15-35
 
-# Add your Datalastic API key to kanmon_AIS_tracker.py
-# API_KEY = "your_key_here"
-
-# Add YouTube cookies for yt-dlp (required for live streams)
-# See: https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp
-
-# Run a 30-minute collection session
-bash collect.sh
-
-# After collection, run the fusion pipeline
-python main_dual_fusion.py
+# Optional overrides
+python3 main_dual_fusion.py --session <id> \
+    --sessions-root /path/to/sessions \
+    --ais-root /path/to/ais/csvs \
+    --result-root /path/to/output \
+    --ais-csv /path/to/merged_ais.csv   # second pass only
 ```
 
 ### Output location
 
 ```
-/mnt/d/kanmon_data/sessions/<SESSION_ID>/   ← raw session files
-/mnt/d/kanmon_temp/result_dual/             ← fusion output video & metrics
+<result-root>/<session_id>/combined_dual_view.mp4   ← annotated dual-camera video
+<result-root>/<session_id>/synthetic_ais_log.csv    ← every synthetic assignment made this run
 ```
 
 ---
 
-## Sync Methodology
+## Known Limitations
 
-Temporal alignment between video and AIS uses a two-step approach:
-
-1. **Epoch sync** — `collect.sh` passes a shared `RECORD_EPOCH` (Unix timestamp) to both the AIS tracker and video recorder at launch. Every AIS snapshot stores `offset_seconds = epoch − record_epoch`.
-
-2. **OSD sync** — Each camera displays an on-screen clock. First frames are extracted and compared manually; any offset between camera OSD times is corrected by trimming the earlier stream with `ffmpeg -ss`.
-
-This gives frame-level alignment between the two video feeds and second-level alignment with the AIS polling timestamps.
+- The synthetic registry's cross-camera identity is **position-based, not
+  appearance-based** — it cannot in principle distinguish two different
+  real vessels that happen to pass close together within its tolerance
+  window.
+- Cam1 has shown persistent detection gaps across parts of sessions;
+  confidence threshold and ROI tuning improved but did not fully resolve
+  this.
+- Displayed synthetic speed/course are demo-quality approximations with
+  layered noise safeguards, **not validated measurements**.
 
 ---
 
 ## Future Work
 
-- **Automated OSD reading** — Use OCR to extract on-screen timestamps automatically, replacing the manual sync step
-- **YOLO-based ship detection** — Replace the current visual tracker with a fine-tuned YOLO model for more robust detection in varying weather and lighting
-- **Vessel behavior analysis** — Use the fused AIS + visual tracks to study traffic patterns, speed distributions, and lane adherence in the strait
-- **Real-time mode** — Adapt the pipeline to process and fuse streams live rather than in post-processing
-
----
-
-## Acknowledgements
-
-Live camera streams sourced from publicly available YouTube feeds of the Kanmon Strait. AIS data provided by [Datalastic](https://datalastic.com). Cloud storage provided by **CSC Finland** (Allas object storage).
+- Explicit cross-camera geometric consistency check (epipolar/ground-plane),
+  rather than relying on independent per-camera matching alone
+- Lightweight appearance features as a secondary signal in the synthetic
+  registry, alongside position and time
+- Multi-point calibration with uncertainty estimation, so downstream
+  matching tolerances could adapt per-camera to calibration confidence
+- Real-time (rather than post-processed) operation
