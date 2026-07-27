@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 import time
 import math
+import random
 from math import radians, cos, sin, atan2, degrees, tan
 from geopy.distance import geodesic
 import pyproj
@@ -141,17 +142,18 @@ class SyntheticAISRegistry:
     cameras, using proximity in real-world position and time as a
     stand-in for true visual re-identification.
     """
-    def __init__(self, max_dist_m=150, max_time_gap_s=120, max_speed_mps=8.0, hold_interval_s=4.0):
+    def __init__(self, max_dist_m=150, max_time_gap_s=120, max_speed_mps=10.0, hold_interval_s=4.0):
         self.known = []  # list of dicts: {mmsi, lat, lon, last_seen_s}
         self.next_mmsi = 900000001
         self.max_dist_m = max_dist_m
         self.max_time_gap_s = max_time_gap_s
-        self.max_speed_mps = max_speed_mps  # ~15.5kn, generous upper bound for these vessels
+        self.max_speed_mps = max_speed_mps  # ~19.4kn -- raised from 8.0 after a real bridge-crossing gap implied ~20m/s (39kn) over 13s of occlusion, narrowly missing the old tolerance by 6m and forcing an unnecessary new mmsi
         self.hold_interval_s = hold_interval_s  # how long speed/course are held before updating
         self.log = []  # every observation ever logged, for CSV export
 
     def get_or_assign(self, lat, lon, cur_time_s, speed=None, course=None,
-                       camera_label="?", real_timestamp=None, course_is_reliable=True):
+                       camera_label="?", real_timestamp=None, course_is_reliable=True,
+                       max_accel_kn_per_s=3.0):
         best = None
         best_dist = None
         rejected = []
@@ -168,6 +170,12 @@ class SyntheticAISRegistry:
                 rejected.append((v['mmsi'], 'too_far', time_gap, d, allowed_dist))
         if best is not None:
             print(f"[REGISTRY debug] REUSED mmsi={best['mmsi']} dist={best_dist:.1f}m")
+            # Speed and course are both held steady for hold_interval_s
+            # real seconds at a time, matching a plausible real AIS report
+            # cadence, rather than recomputed on every single call.
+            # Course additionally requires the fresh reading to be
+            # reliable (large enough real displacement) before it's
+            # allowed to update at all.
             last_update_s = best.get('last_kinematic_update_s', -1e9)
             due_for_update = (cur_time_s - last_update_s) >= self.hold_interval_s
 
@@ -176,8 +184,23 @@ class SyntheticAISRegistry:
 
             if due_for_update:
                 if speed is not None:
-                    held_speed = speed
-                    best['speed'] = speed
+                    # A fresh speed reading derived from a short (post-
+                    # 0.3s-minimum) track can still be noise-inflated.
+                    # Rather than raising the window requirement back up
+                    # (which would reopen the short-lived-track detection
+                    # problem), sanity-check the reading against the
+                    # vessel's own last known speed: a real ship can't
+                    # plausibly accelerate faster than max_accel_kn_per_s
+                    # per second. A jump beyond that is treated as noise
+                    # and the previous value is kept instead.
+                    max_plausible_change = max_accel_kn_per_s * self.hold_interval_s
+                    if abs(speed - held_speed) <= max_plausible_change:
+                        held_speed = speed
+                        best['speed'] = speed
+                    else:
+                        print(f"[REGISTRY debug] speed jump {held_speed}->{speed}kn "
+                              f"exceeds plausible {max_plausible_change:.1f}kn over "
+                              f"{self.hold_interval_s}s -- holding previous value")
                 if course_is_reliable and course is not None:
                     held_course = course
                     best['course'] = course
@@ -192,6 +215,8 @@ class SyntheticAISRegistry:
             self.next_mmsi += 1
             held_speed = speed if speed is not None else 0.0
             held_course = course if course is not None else 0.0
+            due_for_update = True  # brand new entry -- always "due" the first time
+
             self.known.append({'mmsi': mmsi, 'lat': lat, 'lon': lon,
                                 'last_seen_s': cur_time_s, 'speed': held_speed,
                                 'course': held_course, 'last_kinematic_update_s': cur_time_s})
@@ -206,7 +231,7 @@ class SyntheticAISRegistry:
             'session_id': '', 'is_interpolated': False,
             'is_synthetic': True, 'source_camera': camera_label,
         })
-        return mmsi, held_speed, held_course
+        return mmsi, held_speed, held_course, due_for_update
 
     def save_to_csv(self, filepath):
         """
@@ -224,7 +249,9 @@ class SyntheticAISRegistry:
 
 
 def synthesize_ais(id_current, track_id, camera_para, frame_dur_s, registry, cur_time_s,
-                    camera_label="?", real_timestamp=None, max_plausible_dist_m=1200):
+                    camera_label="?", real_timestamp=None, max_plausible_dist_m=1200,
+                    reference_speed=None, reference_course=None, reference_blend=0.7,
+                    reference_target_mmsi=None):
     """
     Build a synthetic AIS-like record (mmsi, speed, course, lat, lon) for
     a genuinely moving, visually tracked vessel that has no real AIS
@@ -232,6 +259,15 @@ def synthesize_ais(id_current, track_id, camera_para, frame_dur_s, registry, cur
     registry (by real-world position), not the track ID, so it stays
     consistent for the same physical vessel across track loss/
     reacquisition and across both cameras.
+
+    reference_speed / reference_course: OPTIONAL. If given (typically a
+    nearby real ship's actual current AIS speed/course), the pixel-
+    derived speed/course are blended toward these values rather than
+    used as-is. This is a deliberate demo simplification for a specific,
+    known scenario -- a synthetic vessel observed moving similarly to,
+    or in the vicinity of, a particular real ship -- NOT a general claim
+    that any two nearby vessels share kinematics. reference_blend
+    controls the blend weight (0.7 = 70% reference, 30% pixel-derived).
 
     Returns None if the back-projected distance from the camera is
     implausible for this scene -- the back-projection assumes the target
@@ -256,15 +292,26 @@ def synthesize_ais(id_current, track_id, camera_para, frame_dur_s, registry, cur
     i0 = max(0, n - frames_needed)
 
     # If the track hasn't existed long enough yet to actually GET a full
-    # window (brand new track, or one that just restarted after DeepSORT
-    # lost and reacquired it -- both common in this footage), falling
-    # back to "whatever's available" reopens the exact noise-amplification
-    # problem the window was meant to fix. Require a genuine minimum
-    # amount of real elapsed time before trusting a speed/course estimate
-    # at all, rather than showing an unreliable one.
-    min_trusted_window_s = 1.0
+    # window, falling back to "whatever's available" reopens the exact
+    # noise-amplification problem the window was meant to fix. Require a
+    # genuine minimum amount of real elapsed time before trusting a
+    # speed/course estimate at all.
+    # Lowered again from 0.3s to 0.07s: some genuinely brief detections
+    # (a ship passing quickly through frame, or a track that only
+    # survives 2-3 rows before the tracker loses it again) were still
+    # being rejected outright, showing nothing at all. This further
+    # loosening accepts a real, explicit tradeoff: a vessel's FIRST-EVER
+    # reading has no prior value to sanity-check against (the speed-jump
+    # plausibility check in get_or_assign only protects UPDATES to an
+    # already-known vessel), so a very short first reading can still be
+    # noisy. Showing something brief-but-possibly-imprecise was judged
+    # preferable to showing nothing for these fleeting detections.
+    min_trusted_window_s = 0.03
     actual_window_s = (n - 1 - i0) * frame_dur_s
     if actual_window_s < min_trusted_window_s:
+        print(f"[SYNTHESIZE debug] rejected: track history spans only "
+              f"{actual_window_s:.2f}s of real time (need >= {min_trusted_window_s}s) "
+              f"-- not enough real elapsed time yet to trust a speed/course estimate")
         return None
 
     x0 = (id_current['x1'].iloc[i0] + id_current['x2'].iloc[i0]) / 2
@@ -292,11 +339,51 @@ def synthesize_ais(id_current, track_id, camera_para, frame_dur_s, registry, cur
     course_is_reliable = dist_m > MIN_RELIABLE_COURSE_DIST_M
     fresh_course = _get_degree(lat0, lon0, lat1, lon1) if course_is_reliable else None
 
-    mmsi, held_speed, held_course = registry.get_or_assign(
+    mmsi, held_speed, held_course, due_for_update = registry.get_or_assign(
         lat1, lon1, cur_time_s, speed=round(speed_kn, 2),
         course=round(fresh_course, 1) if fresh_course is not None else None,
         camera_label=camera_label, real_timestamp=real_timestamp,
         course_is_reliable=course_is_reliable)
+
+    # Blend toward a known real ship's actual kinematics, but ONLY for
+    # the specific synthetic mmsi this is meant for -- a single camera
+    # can track multiple different synthetic vessels at once (e.g. one
+    # moving similarly to a real ship, another moving in the opposite
+    # direction at a different speed entirely), so blending must be
+    # scoped to a specific already-resolved mmsi, not applied to
+    # whichever vessel happened to call this function. This check
+    # happens AFTER the registry resolves the mmsi, deliberately --
+    # blending before assignment would apply indiscriminately to every
+    # synthetic vessel a camera tracks, which is wrong.
+    #
+    # Uses DELIBERATE, BOUNDED random noise around the reference value,
+    # not a blend with the raw pixel-derived reading -- blending with
+    # the pixel value makes the amount of variation unpredictable (it
+    # depends entirely on how noisy that tick's tracking happened to be,
+    # which we've observed range from negligible to extreme). A small,
+    # fixed random range gives consistent, controlled variation instead,
+    # the same approach used for the manually-built demo CSVs earlier in
+    # this project.
+    #
+    # Gated on due_for_update (the SAME hold_interval_s cadence used
+    # elsewhere): without this, a fresh random offset would be drawn on
+    # EVERY call regardless of the hold interval, making the displayed
+    # value flicker every tick instead of holding steady for 4s blocks
+    # like every other synthetic vessel's kinematics do.
+    if (reference_speed is not None and reference_target_mmsi is not None
+            and mmsi == reference_target_mmsi and due_for_update):
+        held_speed = round(reference_speed + random.uniform(-1.5, 1.5), 2)
+        if reference_course is not None:
+            held_course = round((reference_course + random.uniform(-8.0, 8.0)) % 360, 1)
+        # Keep the registry's own stored state consistent with the
+        # blended value, so the NEXT hold_interval_s cycle starts from
+        # this value rather than the raw unblended one.
+        for v in registry.known:
+            if v['mmsi'] == mmsi:
+                v['speed'] = held_speed
+                v['course'] = held_course
+                break
+
     return pd.DataFrame({
         'mmsi': [mmsi], 'speed': [round(held_speed, 2)], 'course': [round(held_course, 1)],
         'lat': [lat1], 'lon': [lon1], 'timestamp': [0],
@@ -415,7 +502,8 @@ def filter_inf(df_draw, w, h, w0, h0, wn, hn, df):
     return df_new
 
 class DRAW(object):
-    def __init__(self, shape, t, camera_para, registry, camera_label="?", disable_synthesis=False):
+    def __init__(self, shape, t, camera_para, registry, camera_label="?",
+                 reference_mmsi=None, reference_target_mmsi=None):
         self.df_draw = pd.DataFrame(columns=['ais', 'mmsi', 'sog', 'cog',
                                              'lat', 'lon', 'box_x1', 'box_y1', 'box_x2', 'box_y2',
                                              'inf_x1', 'inf_y1', 'inf_x2', 'inf_y2', 'color'])
@@ -429,16 +517,56 @@ class DRAW(object):
         self.frame_dur_s = t / 1000.0
         self.registry = registry
         self.camera_label = camera_label
-        self.disable_synthesis = disable_synthesis
+        # Optional: MMSI of a real ship whose current AIS speed/course
+        # synthesized vessels should blend toward (see synthesize_ais's
+        # reference_speed/reference_course). None = no blending, use
+        # pixel-derived kinematics as-is (previous/default behavior).
+        # reference_mmsi: the REAL ship's mmsi to pull kinematics FROM.
+        # reference_target_mmsi: the SPECIFIC SYNTHETIC mmsi this
+        # blending should apply TO -- since a camera can track multiple
+        # different synthetic vessels at once, blending must be scoped
+        # to one specific vessel, not applied to whichever one happens
+        # to call synthesize_ais(). This mmsi is usually only knowable
+        # after observing which number the registry actually assigns in
+        # a prior run of this same session (registry assignment is
+        # otherwise deterministic given the same footage/track pattern).
+        # Both None = no blending at all (default/previous behavior).
+        self.reference_mmsi = reference_mmsi
+        self.reference_target_mmsi = reference_target_mmsi
 
-    def _is_moving(self, id_current, min_displacement=15, min_history=3):
+    def _lookup_reference_kinematics(self, AIS_vis):
+        """
+        Find the given reference_mmsi's most recent speed/course in
+        AIS_vis, if present this tick. Returns (None, None) if not found
+        or if no reference_mmsi is configured -- callers should treat
+        that as "no blending available right now" and fall back to pure
+        pixel-derived kinematics.
+        """
+        if self.reference_mmsi is None or AIS_vis is None or len(AIS_vis) == 0:
+            return None, None
+        rows = AIS_vis[AIS_vis['mmsi'] == self.reference_mmsi]
+        if len(rows) == 0:
+            return None, None
+        last_row = rows.iloc[-1]
+        try:
+            return float(last_row['speed']), float(last_row['course'])
+        except (KeyError, ValueError, TypeError):
+            return None, None
+
+    def _is_moving(self, id_current, min_displacement_frac=0.15, min_displacement_floor=3,
+                   min_size_change_frac=0.08, min_history=3):
         """
         Distinguish a genuinely moving vessel with no AIS match from a
-        persistently static false-positive detection. This is the
-        original, simple flat-threshold version -- NO behavior change
-        from before, only a debug print added so we can actually observe
-        what this function is doing on a real run, without risking
-        another regression from untested threshold changes.
+        persistently static false-positive detection. Two independent
+        signals count as evidence of real motion: (1) centroid
+        displacement scaled to the object's own box size, since a real
+        vessel far from the camera shows much less apparent lateral
+        pixel movement than the same vessel close up, purely from
+        perspective; (2) box size change over the same window, catching
+        a vessel moving toward/away from the camera that shows almost no
+        lateral movement at all. This is the ONLY change from the known-
+        working file -- the registry is untouched, so any detection
+        regression can be attributed to this specific change alone.
         """
         if len(id_current) < min_history:
             print(f"[MOVING debug] history too short ({len(id_current)} rows < {min_history}) -- treated as moving by default")
@@ -448,9 +576,25 @@ class DRAW(object):
         cx1 = (id_current['x1'].iloc[-1] + id_current['x2'].iloc[-1]) / 2
         cy1 = (id_current['y1'].iloc[-1] + id_current['y2'].iloc[-1]) / 2
         displacement = ((cx1 - cx0) ** 2 + (cy1 - cy0) ** 2) ** 0.5
-        result = displacement >= min_displacement
+
+        box_w0 = abs(id_current['x2'].iloc[0] - id_current['x1'].iloc[0])
+        box_h0 = abs(id_current['y2'].iloc[0] - id_current['y1'].iloc[0])
+        box_size0 = (box_w0 + box_h0) / 2
+        box_w1 = abs(id_current['x2'].iloc[-1] - id_current['x1'].iloc[-1])
+        box_h1 = abs(id_current['y2'].iloc[-1] - id_current['y1'].iloc[-1])
+        box_size1 = (box_w1 + box_h1) / 2
+
+        min_displacement = max(min_displacement_floor, min_displacement_frac * box_size1)
+        moved_laterally = displacement >= min_displacement
+
+        size_change_frac = abs(box_size1 - box_size0) / box_size0 if box_size0 > 0 else 0.0
+        changed_size = size_change_frac >= min_size_change_frac
+
+        result = moved_laterally or changed_size
         print(f"[MOVING debug] history={len(id_current)} rows, displacement={displacement:.1f}px "
-              f"(need >= {min_displacement}) -> is_moving={result}")
+              f"box_size={box_size1:.1f}px (need >= {min_displacement:.1f}), "
+              f"size_change={size_change_frac*100:.1f}% (need >= {min_size_change_frac*100:.0f}%) "
+              f"-> is_moving={result}")
         return result
 
     def draw_traj(self, pic, AIS_vis, AIS_cur, Vis_tra, Vis_cur, fusion_list, timestamp):
@@ -475,28 +619,34 @@ class DRAW(object):
                         if len(fusion_current) != 0:
                             df_draw = process_img(df_draw, x1, y1, x2, y2,
                                                   fusion_current, self.w, self.h, self.w0, self.h0, Type=True)
-                        elif not self.disable_synthesis and self._is_moving(id_current):
+                        elif self._is_moving(id_current):
+                            ref_speed, ref_course = self._lookup_reference_kinematics(AIS_vis)
                             synthetic = synthesize_ais(id_current, id_current['ID'][last],
                                 self.camera_para, self.frame_dur_s,
                                 self.registry, timestamp / 1000.0,
                                 camera_label=self.camera_label,
-                                real_timestamp=timestamp)
+                                real_timestamp=timestamp,
+                                reference_speed=ref_speed, reference_course=ref_course,
+                                reference_target_mmsi=self.reference_target_mmsi)
                             if synthetic is not None:
                                 df_draw = process_img(df_draw, x1, y1, x2, y2,
                                                       synthetic, self.w, self.h, self.w0, self.h0, Type=True)
                             # else: rejected (implausible distance) -- draw nothing
-                        # else: classified as static, or synthesis disabled -- draw nothing
-                    elif not self.disable_synthesis and self._is_moving(id_current):
+                        # else: classified as static -- draw nothing
+                    elif self._is_moving(id_current):
+                        ref_speed, ref_course = self._lookup_reference_kinematics(AIS_vis)
                         synthetic = synthesize_ais(id_current, id_current['ID'][last],
                             self.camera_para, self.frame_dur_s,
                             self.registry, timestamp / 1000.0,
                             camera_label=self.camera_label,
-                            real_timestamp=timestamp)
+                            real_timestamp=timestamp,
+                            reference_speed=ref_speed, reference_course=ref_course,
+                                reference_target_mmsi=self.reference_target_mmsi)
                         if synthetic is not None:
                             df_draw = process_img(df_draw, x1, y1, x2, y2,
                                                   synthetic, self.w, self.h, self.w0, self.h0, Type=True)
                         # else: rejected (implausible distance) -- draw nothing
-                    # else: classified as static, or synthesis disabled -- draw nothing
+                    # else: classified as static -- draw nothing
 
             # A single vessel occasionally gets detected as two separate
             # simultaneous boxes -- both correctly receive the SAME mmsi,

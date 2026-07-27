@@ -124,7 +124,11 @@ def interpolate_vessel(group: pd.DataFrame, step: str = "10s") -> pd.DataFrame:
     combined_index = full_index.union(group.index)
     resampled = group.reindex(combined_index)
 
-    # Linear interpolation in time for coordinates and speed
+    # Linear interpolation in time for coordinates and speed. method="index"
+    # interpolates proportionally to the actual elapsed time between
+    # surrounding real fixes (not just a straight row-count average),
+    # which is what makes this genuinely LINEAR interpolation in time
+    # for lat/lon rather than a naive midpoint.
     numeric_cols = [c for c in ["lat", "lon", "speed"] if c in resampled.columns]
     resampled[numeric_cols] = resampled[numeric_cols].interpolate(method="index")
 
@@ -184,6 +188,14 @@ if __name__ == "__main__":
     # -----------------------------------------------------------------------
     RAW_DATA_PATH = "/mnt/d/rotterdam_data/sessions" 
     TARGET_SESSION = "2026-05-27_15-35"
+
+    # Shift ALL real AIS timestamps back 1 minute before interpolating.
+    # This does NOT affect the lat/lon interpolation MATH itself (still
+    # plain linear interpolation in time, via interpolate_vessel above) --
+    # it just moves every real fix 1 minute earlier on the clock, so the
+    # resulting interpolated grid lines up 1 minute earlier than the raw
+    # AIS data originally reported.
+    TIMESTAMP_SHIFT = pd.Timedelta(minutes=-1)
     
     print("Step 1: Loading raw AIS folders...")
     try:
@@ -201,6 +213,9 @@ if __name__ == "__main__":
     else:
         print("-> Error: 'session_id' marker was missing. Processing all data instead.")
         session_df = raw_df.copy()
+
+    print(f"\nStep 2b: Shifting all timestamps back by {-TIMESTAMP_SHIFT}...")
+    session_df["timestamp"] = session_df["timestamp"] + TIMESTAMP_SHIFT
 
     # Define the Rotterdam Port Bounding Box limits
     MIN_LAT = 51.8800

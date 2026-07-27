@@ -194,12 +194,11 @@ t2 = int(round(frame_dur_2))
 
 AIS1 = AISPRO(ais_path_shared, ais_file_1, im_shape_1, t1)
 VIS1 = VISPRO(anti, anti_rate, t1)
-FUS1 = FUSPRO(max_dis_1, im_shape_1, t1)
+FUS1 = FUSPRO(max_dis_1, im_shape_1, t1, cam_para_1, debug_label="cam1")
 DRA1 = DRAW(im_shape_1, t1)
-
 AIS2 = AISPRO(ais_path_shared, ais_file_2, im_shape_2, t2)
 VIS2 = VISPRO(anti, anti_rate, t2)
-FUS2 = FUSPRO(max_dis_2, im_shape_2, t2)
+FUS2 = FUSPRO(max_dis_2, im_shape_2, t2, cam_para_2, debug_label="cam2")
 DRA2 = DRAW(im_shape_2, t2)
 
 show_size   = 500

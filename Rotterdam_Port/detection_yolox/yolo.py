@@ -34,7 +34,7 @@ class YOLO(object):
         #---------------------------------------------------------------------#
         #   只有得分大于置信度的预测框会被保留下来
         #---------------------------------------------------------------------#
-        "confidence"        : 0.10,        # <-- LOWERED FROM 0.5
+        "confidence"        : 0.03,        # <-- LOWERED FURTHER FROM 0.10 -- cam1's own post-filter in VISPRO already matched 0.10 exactly, meaning cam1 was already seeing every detection the model could produce at that level and still found nothing. Lowering the global floor further, paired with correspondingly lowering cam1's own min_confidence in main_dual_fusion.py, lets genuinely very-low-confidence detections through for cam1 specifically. cam2's own 0.40 filter is unaffected by this change, since it stays comfortably above this new floor regardless.
         #---------------------------------------------------------------------#
         #   非极大抑制所用到的nms_iou大小
         #---------------------------------------------------------------------#
@@ -157,4 +157,3 @@ class YOLO(object):
 
 
         return out
-

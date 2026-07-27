@@ -54,28 +54,6 @@ def DTW_fast(traj0, traj1):
 
     return d * math.exp(theta)
 
-def _vis_track_is_moving(traj_rows, min_displacement=15, min_history=3):
-    """
-    Check whether a tracked VIS box has actually moved over its own recent
-    history, using the same displacement-based logic already used to gate
-    synthetic AIS assignment (draw.py's _is_moving). Real AIS matching had
-    no equivalent check: a persistently static false-positive detection
-    (not a real ship at all) could still be assigned a real or synthetic
-    identity purely because its distance/heading to some AIS position
-    happened to line up at one tick -- even though a genuine ship should
-    show motion consistent with actually being underway. A track with too
-    little history yet to judge is treated as moving by default, so a
-    real ship isn't excluded just because it was only detected a moment
-    ago.
-    """
-    if len(traj_rows) < min_history:
-        return True
-    x0, y0 = traj_rows[0][0], traj_rows[0][1]
-    x1, y1 = traj_rows[-1][0], traj_rows[-1][1]
-    displacement = ((x1 - x0) ** 2 + (y1 - y0) ** 2) ** 0.5
-    return displacement >= min_displacement
-
-
 def traj_group(df_data, df_dataCur, kind):
     """
     对数据轨迹按照MMSI呼号或者ID号进行分组，并获取每条船舶或者每个检测框的轨迹
@@ -299,16 +277,6 @@ class FUSPRO(object):
         if timestamp % 1000 < self.t:
             AIS_list, AIS_MMSIlist, AInf_list = traj_group(AIS_vis, AIS_cur, 'AIS')
             VIS_list, VIS_IDlist, VInf_list = traj_group(Vis_tra, Vis_cur, 'VIS')
-
-            # Exclude static (non-moving) VIS candidates from matching
-            # entirely -- a persistently still detection is very likely a
-            # false positive (a dock structure, a stationary reflection),
-            # not a real underway vessel, regardless of whether its
-            # distance/heading to some AIS position happens to line up.
-            _moving_mask = [_vis_track_is_moving(traj) for traj in VIS_list]
-            VIS_list = [v for v, keep in zip(VIS_list, _moving_mask) if keep]
-            VIS_IDlist = [v for v, keep in zip(VIS_IDlist, _moving_mask) if keep]
-            VInf_list = [v for v, keep in zip(VInf_list, _moving_mask) if keep]
 
             _cam_label = getattr(self, "_debug_label", "?")
             print(f"[FUS debug][{_cam_label}][fusion() inputs] "

@@ -251,7 +251,7 @@ max_dis_2  = 300
 # ---------------------------------------------------------
 t1 = int(round(frame_dur_1))
 t2 = int(round(frame_dur_2))
-VIS1 = VISPRO(anti, anti_rate, t1, detect_roi=(256, 210, 854, 460), detect_upscale=4.0, min_confidence=0.10)
+VIS1 = VISPRO(anti, anti_rate, t1, detect_roi=(256, 210, 854, 460), detect_upscale=4.0, min_confidence=0.03)
 FUS1 = FUSPRO(max_dis_1, im_shape_1, t1, debug_label="cam1")
 AIS1 = AISPRO(ais_path_shared, ais_file_1, im_shape_1, t1)
 
