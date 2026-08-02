@@ -12,7 +12,8 @@
 ---
 <img width="800" height="225" alt="clip1" src="https://github.com/user-attachments/assets/88406bb6-d8d4-4efe-afd0-a78f53bf16f4" />
 <img width="800" height="225" alt="clip2" src="https://github.com/user-attachments/assets/1739e31a-36cb-47b2-99b6-f5d58387c990" />
-<img width="800" height="225" alt="clip3" src="https://github.com/user-attachments/assets/079c95f7-dd2b-409d-922d-ad5ee10f17e2" />
+
+
 ## Overview
 
 The Erasmusbrug crossing is one of the most heavily trafficked stretches of
