@@ -10,16 +10,9 @@
 ![Status](https://img.shields.io/badge/Status-Research%20Prototype-yellow?style=flat-square)
 
 ---
-
-
-https://github.com/user-attachments/assets/fc65dbec-1dce-4736-b18f-0559a571a61a
-https://github.com/user-attachments/assets/6cb8be22-1794-4070-8f17-74627937c580
-https://github.com/user-attachments/assets/54857b30-c1a0-4a3f-b9e9-937923fe4b09
-
-
-
-
-
+<img width="800" height="225" alt="clip1" src="https://github.com/user-attachments/assets/88406bb6-d8d4-4efe-afd0-a78f53bf16f4" />
+<img width="800" height="225" alt="clip2" src="https://github.com/user-attachments/assets/1739e31a-36cb-47b2-99b6-f5d58387c990" />
+<img width="800" height="225" alt="clip3" src="https://github.com/user-attachments/assets/079c95f7-dd2b-409d-922d-ad5ee10f17e2" />
 ## Overview
 
 The Erasmusbrug crossing is one of the most heavily trafficked stretches of
