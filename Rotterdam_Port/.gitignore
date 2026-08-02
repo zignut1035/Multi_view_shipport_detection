@@ -1,0 +1,32 @@
+# --- 1. Ignore Videos and Temp Files ---
+*.mp4
+*.webm
+*.mkv
+*.part
+*.ytdl
+
+# --- 2. Ignore Secrets (VERY IMPORTANT) ---
+cookies.txt
+.env
+
+# --- 3. Ignore AIS Data Folders ---
+**/ais_data_kanmon/
+**/ais_data_sydney/
+**/ais_data_rotterdam/
+/tmp/
+
+# --- 4. Ignore Logs and Images ---
+*.log
+cam1_error_log.txt
+cam2_error_log.txt
+sydney_error_log.txt
+*.jpg
+*.png
+*.zip
+
+# --- 5. Python Clutter ---
+__pycache__/
+
+# --- 6. General Text Files ---
+# Warning: This ignores requirements.txt and README.txt too
+*.txt

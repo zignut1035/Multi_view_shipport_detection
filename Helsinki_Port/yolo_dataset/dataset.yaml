@@ -1,0 +1,7 @@
+path: /home/treenut/multi_view/ships/Helsinki_Port/yolo_dataset
+train: images/train
+val: images/val
+
+names: 
+  0: Finlandia
+  1: MyStar
