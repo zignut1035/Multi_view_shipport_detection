@@ -133,29 +133,6 @@ Rotterdam_Port/
     └── gen_result.py                # Per-timestamp result export
 ```
 
-### Legacy files (present, not part of the current baseline)
-
-These live in the same workspace from the earlier synthetic-identity /
-bootstrap workflow (see previous README revision) and are kept for
-reference, not deleted — but are not used by `main_dual_fusion_v2.py`:
-
-| File | Was used for |
-|---|---|
-| `main_dual_fusion.py` | Pre-v2 orchestrator (no independent per-camera clocks, still had synthetic AIS) |
-| `record_ships_rotterdam.sh` | Pre-v2 collector script |
-| `synthesize_ais.py` | Synthetic identity generation (removed workflow) |
-| `synthetic_ais_log_held.csv` | Output of the synthetic workflow |
-| `convert_to_ais.py` | Converted/merged synthetic log back into a real-format AIS CSV for the old two-pass bootstrap |
-| `data.js` / `rotterdam_ship_trajectory.html` (top-level) | Earlier, pre-`ais_explorer_v2` version of the coverage viewer |
-
-A few other scripts in the workspace (`shift_ais.py`, `area_plot.py`,
-`rotterdam_AIS_tracker.py`) aren't yet documented here — flag if you'd
-like them written up too.
-
-Note: the shared workspace (`~/multi_view/ships/`) also contains sibling
-per-port projects (`Kanmon_Port/`, `Helsinki_Port/`, `Sydney_Port/`) using
-similar tooling — out of scope for this README.
-
 ---
 
 ## Camera Setup
