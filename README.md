@@ -214,6 +214,7 @@ accurate along the confirmed transit path used to fit it.
 ---
 
 ## AIS Coverage QA (Trajectory Explorer)
+<img width="1548" height="2049" alt="6d82edac-6702-4e19-bb69-cc981cfcfa65" src="https://github.com/user-attachments/assets/59750329-3b17-4191-b45d-ec3c5de0e873" />
 
 Before running fusion on a session, the `ais_explorer_v2/` viewer gives a
 quick browser-based way to sanity-check AIS coverage for that session:
